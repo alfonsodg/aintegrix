@@ -68,12 +68,13 @@ aintegrix-cli --url https://coord-acp.apulab.info status
 
 Any MCP-compatible agent can use AIntegriX as a tool server:
 
+**Remote (HTTPS):**
 ```json
 {
   "mcpServers": {
     "aintegrix": {
       "url": "https://coord-acp.apulab.info/mcp",
-      "type": "sse",
+      "type": "http",
       "headers": {
         "Authorization": "Bearer <token>"
       }
@@ -81,6 +82,21 @@ Any MCP-compatible agent can use AIntegriX as a tool server:
   }
 }
 ```
+
+**Local (via mcp-proxy):**
+```json
+{
+  "mcpServers": {
+    "aintegrix": {
+      "command": "mcp-proxy",
+      "args": ["-H", "Authorization", "Bearer aintegrix-local-key-2026", "--transport", "streamablehttp", "http://localhost:8050/mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+Requires: `npm install -g mcp-proxy`
 
 Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp_close_session`
 

@@ -32,15 +32,17 @@ Then configure your agent's MCP to point to localhost:
 {
   "mcpServers": {
     "aintegrix": {
-      "url": "http://localhost:8050/mcp",
-      "type": "sse",
-      "headers": {
-        "Authorization": "Bearer local-dev-key"
-      }
+      "command": "mcp-proxy",
+      "args": ["-H", "Authorization", "Bearer aintegrix-local-key-2026", "--transport", "streamablehttp", "http://localhost:8050/mcp"],
+      "env": {}
     }
   }
 }
 ```
+
+Requires `mcp-proxy`: `npm install -g mcp-proxy`
+
+> **Why mcp-proxy?** Kiro and other agents expect OAuth or stdio transport. `mcp-proxy` bridges stdio ↔ HTTP, bypassing OAuth discovery on localhost.
 
 ### Local vs Remote
 
