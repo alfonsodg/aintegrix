@@ -203,6 +203,10 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
                     Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error cloning repo: {e}")}], "isError": true})),
                 }
             } else {
+                // Validate workspace exists on server
+                if workspace != "/tmp" && !std::path::Path::new(workspace).exists() {
+                    return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: workspace_root '{}' does not exist on the remote server. This tool runs REMOTELY — use 'repo' parameter to clone a GitLab repository instead. Example: {{\"agent\": \"{}\", \"repo\": \"group/project\", \"branch\": \"develop\"}}", workspace, agent)}], "isError": true}));
+                }
                 (workspace.to_owned(), None)
             };
             let mut process = match crate::agent::process::AgentProcess::spawn(agent, cfg).await {
