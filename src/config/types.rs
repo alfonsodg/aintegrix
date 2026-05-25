@@ -3,6 +3,8 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
+use crate::server::routing::RoutingConfig;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
@@ -11,6 +13,8 @@ pub struct AppConfig {
     pub permissions: PermissionsConfig,
     #[serde(default)]
     pub logging: LoggingConfig,
+    #[serde(default)]
+    pub routing: RoutingConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]

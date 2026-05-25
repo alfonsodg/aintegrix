@@ -115,11 +115,21 @@ struct SessionInfo {
 
 #[derive(Deserialize)]
 struct CreateSessionRequest {
-    agent: String,
+    #[serde(default)]
+    agent: Option<String>,
     #[serde(default = "default_workspace")]
     workspace_root: String,
     #[serde(default)]
     model: Option<String>,
+    #[serde(default)]
+    auto_route: bool,
+    /// Prompt text used for routing decision (not sent to agent)
+    #[serde(default)]
+    prompt: Option<String>,
+    #[serde(default)]
+    file_paths: Vec<String>,
+    #[serde(default)]
+    task_type: Option<String>,
 }
 
 fn default_workspace() -> String {
@@ -171,18 +181,39 @@ async fn create_session(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreateSessionRequest>,
 ) -> Result<(StatusCode, Json<CreateSessionResponse>), (StatusCode, Json<ApiError>)> {
-    let config = state.config.agents.get(&req.agent).ok_or_else(|| {
-        not_found("agent_not_found", format!("agent '{}' not configured", req.agent))
+    // Resolve agent: explicit, auto-route, or error
+    let agent_name = if let Some(ref name) = req.agent {
+        name.clone()
+    } else if req.auto_route {
+        let prompt_text = req.prompt.as_deref().unwrap_or("");
+        super::routing::resolve_agent(
+            &state.config.routing,
+            prompt_text,
+            &req.file_paths,
+            req.task_type.as_deref(),
+        )
+        .ok_or_else(|| {
+            (StatusCode::BAD_REQUEST, Json(ApiError {
+                code: "no_route".to_owned(),
+                message: "auto_route enabled but no matching rule and no fallback".to_owned(),
+            }))
+        })?
+    } else {
+        return Err((StatusCode::BAD_REQUEST, Json(ApiError {
+            code: "missing_agent".to_owned(),
+            message: "either 'agent' or 'auto_route: true' is required".to_owned(),
+        })));
+    };
+
+    let config = state.config.agents.get(&agent_name).ok_or_else(|| {
+        not_found("agent_not_found", format!("agent '{agent_name}' not configured"))
     })?;
 
     // Check session limit
     let active_count = state
         .sessions
         .iter()
-        .filter(|e| {
-            // Safe sync check via key naming convention
-            e.key().starts_with(&req.agent)
-        })
+        .filter(|e| e.key().starts_with(&agent_name))
         .count() as u32;
 
     if active_count >= config.max_sessions {
@@ -190,13 +221,13 @@ async fn create_session(
             StatusCode::TOO_MANY_REQUESTS,
             Json(ApiError {
                 code: "max_sessions_reached".to_owned(),
-                message: format!("agent '{}' has reached max sessions ({})", req.agent, config.max_sessions),
+                message: format!("agent '{}' has reached max sessions ({})", agent_name, config.max_sessions),
             }),
         ));
     }
 
     // Spawn agent subprocess
-    let mut process = AgentProcess::spawn(&req.agent, config).await.map_err(|e| {
+    let mut process = AgentProcess::spawn(&agent_name, config).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
             code: "spawn_failed".to_owned(),
             message: format!("failed to spawn agent: {e}"),
@@ -223,22 +254,22 @@ async fn create_session(
         config.default_model.clone().unwrap_or_else(|| "default".to_owned())
     });
 
-    let session_id = format!("{}_{}", req.agent, uuid::Uuid::new_v4());
+    let session_id = format!("{}_{}", agent_name, uuid::Uuid::new_v4());
     let entry = SessionEntry {
-        agent_name: req.agent.clone(),
+        agent_name: agent_name.clone(),
         acp_session_id,
         process,
     };
 
     state.sessions.insert(session_id.clone(), Arc::new(Mutex::new(entry)));
 
-    tracing::info!(session = %session_id, agent = %req.agent, model = %model, "session created");
+    tracing::info!(session = %session_id, agent = %agent_name, model = %model, "session created");
 
     Ok((
         StatusCode::CREATED,
         Json(CreateSessionResponse {
             id: session_id,
-            agent: req.agent,
+            agent: agent_name,
             model,
             status: "active".to_owned(),
         }),

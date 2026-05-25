@@ -269,6 +269,7 @@ mod tests {
             )]),
             permissions: PermissionsConfig::default(),
             logging: LoggingConfig::default(),
+            routing: crate::server::routing::RoutingConfig::default(),
         }
     }
 
