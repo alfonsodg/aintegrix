@@ -108,6 +108,7 @@ pub async fn session_prompt(
 
     // Process notifications and tool call requests until we get our response
     let deadline = tokio::time::Instant::now() + timeout;
+    let mut response_text = String::new();
 
     loop {
         tokio::select! {
@@ -124,7 +125,11 @@ pub async fn session_prompt(
                         .and_then(|v| v.as_str())
                         .unwrap_or("end_turn")
                         .to_owned();
-                    return Ok(stop_reason);
+                    // Return accumulated text or just stop_reason
+                    if response_text.is_empty() {
+                        return Ok(stop_reason);
+                    }
+                    return Ok(response_text);
                 }
             }
             Some(notif) = agent.notification_rx.recv() => {
@@ -134,14 +139,12 @@ pub async fn session_prompt(
                     let params = notif.params.clone().unwrap_or_default();
                     tracing::info!(tool = %tool_method, "handling tool call from agent");
 
-                    // Extract request ID from params (agent sends it)
                     let req_id = params.get("__request_id")
                         .cloned()
                         .unwrap_or(Value::Null);
 
                     let result = handle_tool_call(tool_method, &params).await;
 
-                    // Send response back to agent
                     let response_json = json!({
                         "jsonrpc": "2.0",
                         "id": req_id,
@@ -150,7 +153,15 @@ pub async fn session_prompt(
                     let _ = crate::protocol::transport::send_raw(&mut agent.stdin, &response_json).await;
                     tracing::info!(tool = %tool_method, "tool call response sent");
                 } else {
-                    tracing::debug!(method = %notif.method, "notification received");
+                    // Capture agent message chunks
+                    if let Some(params) = &notif.params
+                        && let Some(update) = params.get("update")
+                        && let Some(update_type) = update.get("sessionUpdate").and_then(|v| v.as_str())
+                        && (update_type == "agent_message_chunk" || update_type == "AgentMessageChunk")
+                        && let Some(text) = update.get("content").and_then(|c| c.get("text")).and_then(|t| t.as_str())
+                    {
+                        response_text.push_str(text);
+                    }
                 }
             }
             _ = tokio::time::sleep_until(deadline) => {
