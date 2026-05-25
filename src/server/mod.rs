@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod fs_handler;
 pub mod permissions;
 pub mod routes;
