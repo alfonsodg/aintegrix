@@ -14,6 +14,52 @@ cargo build --release
 # Binary at: target/release/aintegrix
 ```
 
+## Run Locally
+
+For local development, AIntegriX can run on your machine with direct filesystem access:
+
+```bash
+# Set API key
+export AINTEGRIX_API_KEY=local-dev-key
+
+# Run with local config
+cargo run -- --config samples/aintegrix-local.yaml
+```
+
+Then configure your agent's MCP to point to localhost:
+
+```json
+{
+  "mcpServers": {
+    "aintegrix": {
+      "url": "http://localhost:8050/mcp",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer local-dev-key"
+      }
+    }
+  }
+}
+```
+
+### Local vs Remote
+
+| | Local | Remote (dev-gcp) |
+|---|---|---|
+| URL | `http://localhost:8050/mcp` | `https://coord-acp.apulab.info/mcp` |
+| Code access | `workspace_root` with local paths | `repo` param (auto-clones from GitLab) |
+| Needs push | No | Yes |
+| Sees uncommitted changes | Yes | No |
+| Config | `samples/aintegrix-local.yaml` | `/opt/aintegrix/aintegrix.yaml` |
+
+### Usage (local)
+
+```bash
+# Agent can use local paths directly
+acp_create_session(agent="opencode", workspace_root="/home/user/project")
+acp_prompt(session_id="...", message="review src/main.rs")
+```
+
 ## Deploy (systemd)
 
 ```bash

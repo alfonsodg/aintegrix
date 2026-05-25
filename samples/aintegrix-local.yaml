@@ -1,0 +1,97 @@
+server:
+  host: "127.0.0.1"
+  port: 8050
+
+logging:
+  level: info
+  format: json
+
+agents:
+  kiro:
+    command: /home/alfonsodg/.local/bin/kiro-cli
+    args: [acp]
+    mode: native
+    max_sessions: 3
+    auto_restart: true
+    default_model: claude-opus-4.6
+    models:
+      - claude-opus-4.6
+      - claude-sonnet-4
+      - claude-haiku-3.5
+
+  copilot:
+    command: /usr/bin/copilot
+    args: [--acp]
+    mode: native
+    max_sessions: 5
+    auto_restart: true
+    default_model: gpt-5.3-codex
+    models:
+      - gpt-5.3-codex
+      - gpt-4.1
+      - o3
+
+  opencode:
+    command: /usr/bin/opencode
+    args: [acp]
+    mode: native
+    max_sessions: 5
+    auto_restart: true
+    default_model: xiaomi-mimo/mimo-v2.5-pro
+    models:
+      - xiaomi-mimo/mimo-v2.5-pro
+      - nvidia/llama-3.3-70b
+      - groq/llama-3.3-70b
+
+  claude:
+    command: /home/alfonsodg/.nvm/versions/node/v24.14.1/bin/claude-agent-acp
+    args: []
+    mode: adapter
+    max_sessions: 3
+    auto_restart: true
+    default_model: minimax-2.7
+    models:
+      - minimax-2.7
+      - claude-opus-4.6
+      - claude-sonnet-4
+
+  codex:
+    command: /home/alfonsodg/.nvm/versions/node/v24.14.1/bin/codex-acp
+    args: []
+    mode: adapter
+    max_sessions: 3
+    auto_restart: true
+    default_model: gpt-5.5-xhigh
+    models:
+      - gpt-5.5-xhigh
+      - o3
+      - o4-mini
+
+permissions:
+  default_policy: deny
+  auto_approve:
+    - fs/read_text_file
+  require_approval:
+    - fs/write_text_file
+    - terminal/create
+  always_deny:
+    - terminal/kill
+
+routing:
+  rules:
+    - match:
+        keywords: [frontend, react, css, ui, component, tailwind]
+      agent: copilot
+    - match:
+        file_patterns: ["*.rs", "Cargo.toml"]
+      agent: kiro
+    - match:
+        keywords: [review, audit, security, vulnerability]
+      agent: claude
+    - match:
+        task_type: refactor
+      agent: opencode
+    - match:
+        keywords: [python, django, flask, fastapi]
+      agent: codex
+  fallback: kiro
