@@ -58,7 +58,7 @@ pub async fn mcp_handler(
     let response = match req.method.as_str() {
         "initialize" => handle_initialize(id.clone()),
         "notifications/initialized" => return (StatusCode::OK, Json(json!({}))).into_response(),
-        "tools/list" => handle_tools_list(id.clone()),
+        "tools/list" => handle_tools_list(id.clone(), &state.config),
         "tools/call" => handle_tools_call(id.clone(), req.params, &state).await,
         _ => McpResponse::error(id, -32601, "method not found"),
     };
@@ -93,7 +93,20 @@ fn handle_initialize(id: Value) -> McpResponse {
     )
 }
 
-fn handle_tools_list(id: Value) -> McpResponse {
+fn handle_tools_list(id: Value, config: &crate::config::types::AppConfig) -> McpResponse {
+    let is_local = config.server.host == "127.0.0.1" || config.server.host == "localhost";
+
+    let create_desc = if is_local {
+        "Create a new session on a specific ACP agent. Pass workspace_root with the LOCAL directory path where the code lives (e.g. '/home/user/project'). Do NOT use repo paths — this is a local server with direct filesystem access."
+    } else {
+        "Create a new session on a specific ACP agent. Pass workspace_root with a GitLab repo path (e.g. 'ccvass/project') to clone, or a server-side directory. Push changes before calling."
+    };
+
+    let ws_desc = if is_local {
+        "Absolute local directory path where the code lives (e.g. '/home/user/myproject')"
+    } else {
+        "GitLab repo path (e.g. 'ccvass/voxcix/admin') or server-side directory path"
+    };
     McpResponse::success(
         id,
         json!({
@@ -108,7 +121,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                 },
                 {
                     "name": "acp_create_session",
-                    "description": "Create a new session on a specific ACP agent. Pass workspace_root with a local path or a GitLab repo path (e.g. 'ccvass/project'). Auto-detects: if path exists locally it's used directly, otherwise it's cloned from GitLab.",
+                    "description": create_desc,
                     "inputSchema": {
                         "type": "object",
                         "properties": {
@@ -116,21 +129,17 @@ fn handle_tools_list(id: Value) -> McpResponse {
                                 "type": "string",
                                 "description": "Agent name (kiro, copilot, opencode, claude, codex)"
                             },
-                            "repo": {
+                            "workspace_root": {
                                 "type": "string",
-                                "description": "GitLab repo path (e.g. 'ccvass/voxcix/admin'). REQUIRED for code tasks. Clones fresh from remote."
+                                "description": ws_desc
                             },
                             "branch": {
                                 "type": "string",
-                                "description": "Branch to clone (defaults to 'develop')"
+                                "description": "Branch to clone (defaults to 'develop'). Only used for repo paths."
                             },
                             "model": {
                                 "type": "string",
                                 "description": "Model to use (optional, uses agent default if not specified)"
-                            },
-                            "workspace_root": {
-                                "type": "string",
-                                "description": "Local directory path where the code lives. Use this when the path exists on this machine."
                             }
                         },
                         "required": ["agent"]
@@ -301,7 +310,8 @@ mod tests {
 
     #[test]
     fn test_tools_list() {
-        let resp = handle_tools_list(json!(2));
+        let state = test_state();
+        let resp = handle_tools_list(json!(2), &state.config);
         let tools = resp.result.unwrap()["tools"].as_array().unwrap().len();
         assert_eq!(tools, 4);
     }
