@@ -14,17 +14,23 @@ Centralized ACP (Agent Client Protocol) server for multi-agent coordination. Man
 - JSON-RPC 2.0 ACP protocol over stdio (agent subprocess management)
 - REST API with Bearer token authentication
 - Native MCP server at `/mcp` (SSE transport)
-- WebSocket + SSE streaming for real-time session updates
+- Real-time SSE streaming of agent responses
+- Multi-agent orchestration (parallel, race, jury strategies)
+- Agent chaining / pipelines (sequential multi-step workflows)
+- Intelligent agent routing (YAML rules engine: keywords, file patterns, task type)
+- Session fork (try same conversation with different agent)
+- Git-aware sessions (auto-inject branch, commits, diff as context)
+- Prompt rewriting per agent (configurable prefix/suffix)
+- Context injection (auto-load steering files on session create)
+- GitLab webhook triggers (MR → auto code review)
+- Cost tracking (usage per agent/session/model)
+- Live agent status (idle/busy with session counts)
 - Declarative permission policy engine (YAML)
-- Agent pool with health monitoring and auto-restart
 - Per-agent model selection (configurable defaults + dynamic override)
-- Capability-based routing rules
 - Per-tenant rate limiting (token bucket)
-- Webhook notifications with HMAC signatures
 - SQLite persistence (sessions, turns, agent state)
 - Prometheus metrics at `/metrics`
 - Graceful shutdown (SIGTERM/SIGINT)
-- CLI companion tool (`aintegrix-cli`)
 
 ## Agents Supported
 
@@ -85,10 +91,18 @@ Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp
 | GET | `/health` | Liveness (no auth) |
 | GET | `/api/v1/agents` | List agents |
 | GET | `/api/v1/agents/{name}/models` | List models for agent |
-| POST | `/api/v1/sessions` | Create session |
-| POST | `/api/v1/sessions/{id}/prompt` | Send prompt |
-| GET | `/api/v1/sessions/{id}/stream` | WebSocket streaming |
+| GET | `/api/v1/agents/status` | Live agent status (idle/busy/sessions) |
+| GET | `/api/v1/usage` | Cost tracking (prompts per agent) |
+| POST | `/api/v1/sessions` | Create session (supports `auto_route`, `git_context`) |
+| GET | `/api/v1/sessions/{id}` | Get session info |
+| POST | `/api/v1/sessions/{id}/prompt` | Send prompt (with prompt rewriting) |
+| POST | `/api/v1/sessions/{id}/stream` | Send prompt with SSE streaming |
+| POST | `/api/v1/sessions/{id}/fork` | Fork session to different agent |
 | DELETE | `/api/v1/sessions/{id}` | Close session |
+| POST | `/api/v1/orchestrate` | Multi-agent orchestration (parallel/race/jury) |
+| POST | `/api/v1/pipelines` | Agent chaining (sequential steps) |
+| POST | `/api/v1/stream` | Create session + stream in one call |
+| POST | `/api/v1/webhooks/gitlab` | Receive GitLab webhooks (auto code review) |
 | POST | `/mcp` | MCP JSON-RPC endpoint |
 
 ## Documentation

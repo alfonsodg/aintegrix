@@ -108,6 +108,66 @@ MCP JSON-RPC endpoint (Streamable HTTP transport).
 | `acp_prompt` | Send prompt | `session_id`, `message` |
 | `acp_close_session` | Close session | `session_id` |
 
+## Orchestration
+
+### POST /api/v1/orchestrate
+Send prompt to multiple agents.
+
+**Request**:
+```json
+{
+  "agents": ["kiro", "claude", "opencode"],
+  "messages": [{"type": "text", "text": "implement binary search"}],
+  "strategy": "parallel",
+  "judge": "claude"
+}
+```
+
+Strategies: `parallel` (all respond), `race` (first wins), `jury` (judge picks best).
+
+## Pipelines
+
+### POST /api/v1/pipelines
+Sequential multi-step agent chaining.
+
+**Request**:
+```json
+{
+  "steps": [{"agent": "opencode"}, {"agent": "claude", "prompt_template": "Review: {{previous}}"}],
+  "messages": [{"type": "text", "text": "implement the feature"}]
+}
+```
+
+## Streaming
+
+### POST /api/v1/stream
+Create session and stream response via SSE.
+
+### POST /api/v1/sessions/{id}/stream
+Stream prompt response on existing session via SSE.
+
+## Session Fork
+
+### POST /api/v1/sessions/{id}/fork
+Fork a session to a different agent.
+
+**Request**: `{"target_agent": "claude"}`
+
+## Agent Status
+
+### GET /api/v1/agents/status
+Returns current status of all agents (idle/busy, active sessions, max sessions).
+
+## Usage Tracking
+
+### GET /api/v1/usage
+Query usage data. Optional params: `?agent=kiro&since=2026-05-01`
+
+## Webhooks
+
+### POST /api/v1/webhooks/gitlab
+Receive GitLab webhook events. Validates `X-Gitlab-Token` header against `AINTEGRIX_WEBHOOK_SECRET` env var. MR open/reopen triggers auto code review.
+
 ## Metrics
 
 ### GET /metrics
