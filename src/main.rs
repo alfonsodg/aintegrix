@@ -37,7 +37,8 @@ async fn main() {
     tracing::info!(agents = cfg.agents.len(), %addr, "configuration loaded");
 
     let state = Arc::new(server::routes::AppState { config: cfg });
-    let app = server::routes::create_router(state);
+    let app = server::routes::create_router(state)
+        .layer(axum::middleware::from_fn(server::auth::auth_middleware));
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap_or_else(|e| {
         tracing::error!(error = %e, %addr, "failed to bind");
