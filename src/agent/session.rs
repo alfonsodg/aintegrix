@@ -163,37 +163,38 @@ pub async fn session_prompt(
 /// Execute a tool call from the agent
 async fn handle_tool_call(method: &str, params: &Value) -> Value {
     match method {
-        "session/request_permission" | "requestPermission" => {
-            // Auto-approve all tool permissions
-            json!({"approved": true})
+        "session/request_permission" => {
+            // Auto-approve: select the first "allow" option
+            let options = params.get("options").and_then(|v| v.as_array());
+            let option_id = options
+                .and_then(|opts| {
+                    opts.iter()
+                        .find(|o| {
+                            let kind = o.get("kind").and_then(|k| k.as_str()).unwrap_or("");
+                            kind.starts_with("allow")
+                        })
+                        .and_then(|o| o.get("optionId").and_then(|v| v.as_str()))
+                })
+                .unwrap_or("allow-once");
+            json!({"outcome": {"outcome": "selected", "optionId": option_id}})
         }
-        "fs/readTextFile" | "readTextFile" => {
-            let path = params.get("path")
-                .or_else(|| params.get("filePath"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+        "fs/read_text_file" => {
+            let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
             match tokio::fs::read_to_string(path).await {
                 Ok(content) => json!({"content": content}),
-                Err(e) => json!({"error": format!("failed to read {}: {}", path, e)}),
+                Err(e) => json!({"content": format!("Error reading {}: {}", path, e)}),
             }
         }
-        "fs/writeTextFile" | "writeTextFile" => {
-            let path = params.get("path")
-                .or_else(|| params.get("filePath"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let content = params.get("content")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+        "fs/write_text_file" => {
+            let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            let content = params.get("content").and_then(|v| v.as_str()).unwrap_or("");
             match tokio::fs::write(path, content).await {
-                Ok(()) => json!({"success": true}),
+                Ok(()) => json!({}),
                 Err(e) => json!({"error": format!("failed to write {}: {}", path, e)}),
             }
         }
-        "terminal/execute" | "execute" => {
-            let command = params.get("command")
-                .and_then(|v| v.as_str())
-                .unwrap_or("echo no command");
+        "terminal/execute" => {
+            let command = params.get("command").and_then(|v| v.as_str()).unwrap_or("echo no command");
             let output = tokio::process::Command::new("bash")
                 .arg("-c")
                 .arg(command)
@@ -208,7 +209,10 @@ async fn handle_tool_call(method: &str, params: &Value) -> Value {
                 Err(e) => json!({"error": format!("exec failed: {}", e)}),
             }
         }
-        _ => json!({"error": format!("unsupported tool: {}", method)}),
+        _ => {
+            tracing::warn!(method = %method, "unsupported tool call from agent");
+            json!({})
+        }
     }
 }
 
