@@ -18,6 +18,9 @@ pub struct OrchestrateRequest {
     strategy: String,
     #[serde(default = "default_workspace")]
     workspace_root: String,
+    /// Judge agent for "jury" strategy
+    #[serde(default)]
+    judge: Option<String>,
 }
 
 fn default_strategy() -> String {
@@ -67,7 +70,17 @@ pub async fn orchestrate(
 
     let results = match req.strategy.as_str() {
         "race" => run_race(&state, &req).await,
-        _ => run_parallel(&state, &req).await, // parallel is default
+        "jury" => {
+            let judge_name = req.judge.as_deref().unwrap_or("claude");
+            if !state.config.agents.contains_key(judge_name) {
+                return Err((StatusCode::NOT_FOUND, Json(ApiError {
+                    code: "judge_not_found".to_owned(),
+                    message: format!("judge agent '{judge_name}' not configured"),
+                })));
+            }
+            run_jury(&state, &req, judge_name).await
+        }
+        _ => run_parallel(&state, &req).await,
     };
 
     Ok(Json(OrchestrateResponse {
@@ -178,4 +191,46 @@ async fn run_single_agent(
             duration_ms,
         },
     }
+}
+
+async fn run_jury(state: &AppState, req: &OrchestrateRequest, judge_name: &str) -> Vec<AgentResult> {
+    // First, run all agents in parallel
+    let mut results = run_parallel(state, req).await;
+
+    // Collect successful responses for the judge
+    let successful: Vec<&AgentResult> = results.iter().filter(|r| r.status == "success").collect();
+    if successful.len() < 2 {
+        return results; // Not enough responses to judge
+    }
+
+    // Build judge prompt
+    let candidates: String = successful
+        .iter()
+        .enumerate()
+        .map(|(i, r)| format!("Candidate {} ({}): completed with {}", i + 1, r.agent, r.stop_reason.as_deref().unwrap_or("unknown")))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let judge_prompt = format!(
+        "You are judging responses from multiple AI agents. Select the best one.\n\n{candidates}\n\nWhich candidate produced the best result? Reply with just the number."
+    );
+
+    let judge_config = &state.config.agents[judge_name];
+    let judge_result = run_single_agent(
+        judge_name,
+        judge_config,
+        &req.workspace_root,
+        vec![serde_json::json!({"type": "text", "text": judge_prompt})],
+    )
+    .await;
+
+    results.push(AgentResult {
+        agent: format!("{judge_name} (judge)"),
+        status: judge_result.status,
+        stop_reason: judge_result.stop_reason,
+        error: judge_result.error,
+        duration_ms: judge_result.duration_ms,
+    });
+
+    results
 }

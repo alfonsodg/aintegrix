@@ -1,4 +1,7 @@
+pub mod agent_status;
 pub mod auth;
+pub mod context_inject;
+pub mod cost_tracker;
 pub mod fs_handler;
 pub mod git_context;
 pub mod mcp;

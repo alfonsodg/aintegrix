@@ -15,6 +15,9 @@ fn mock_agent_config() -> AgentConfig {
         env: HashMap::new(),
         default_model: None,
         models: vec![],
+        prompt_prefix: None,
+        prompt_suffix: None,
+        context_inject: Default::default(),
     }
 }
 

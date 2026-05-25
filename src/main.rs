@@ -39,6 +39,7 @@ async fn main() {
     let state = Arc::new(server::routes::AppState {
         config: cfg,
         sessions: dashmap::DashMap::new(),
+        usage: dashmap::DashMap::new(),
     });
     let app = server::routes::create_router(state)
         .layer(axum::middleware::from_fn(server::auth::auth_middleware));

@@ -42,6 +42,12 @@ pub struct AgentConfig {
     pub default_model: Option<String>,
     #[serde(default)]
     pub models: Vec<String>,
+    #[serde(default)]
+    pub prompt_prefix: Option<String>,
+    #[serde(default)]
+    pub prompt_suffix: Option<String>,
+    #[serde(default)]
+    pub context_inject: crate::server::context_inject::ContextInjectConfig,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
