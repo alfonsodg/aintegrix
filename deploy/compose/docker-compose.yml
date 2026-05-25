@@ -1,0 +1,23 @@
+services:
+  aintegrix:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile
+    container_name: aintegrix
+    restart: unless-stopped
+    ports:
+      - "${AINTEGRIX_PORT:-8050}:8050"
+    volumes:
+      - aintegrix-data:/var/lib/aintegrix
+      - ./aintegrix.yaml:/etc/aintegrix/aintegrix.yaml:ro
+    environment:
+      - AINTEGRIX_API_KEY=${AINTEGRIX_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8050/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  aintegrix-data:

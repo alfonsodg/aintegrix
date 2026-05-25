@@ -1,0 +1,63 @@
+server:
+  host: "0.0.0.0"
+  port: 8050
+  auth:
+    type: bearer
+    token_env: AINTEGRIX_API_KEY
+
+persistence:
+  path: /var/lib/aintegrix/aintegrix.db
+
+logging:
+  level: info
+  format: json
+
+agents:
+  kiro:
+    command: kiro-cli
+    args: [acp]
+    mode: native
+    max_sessions: 3
+    auto_restart: true
+
+  copilot:
+    command: copilot
+    args: [--acp, --stdio]
+    mode: native
+    max_sessions: 5
+    auto_restart: true
+
+  opencode:
+    command: opencode
+    args: [acp]
+    mode: native
+    max_sessions: 5
+    auto_restart: true
+
+  claude:
+    command: claude-agent-acp
+    args: []
+    mode: adapter
+    max_sessions: 3
+    auto_restart: true
+    env:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+
+  codex:
+    command: codex-acp
+    args: []
+    mode: adapter
+    max_sessions: 3
+    auto_restart: true
+    env:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+permissions:
+  default_policy: deny
+  auto_approve:
+    - fs/read_text_file
+  require_approval:
+    - fs/write_text_file
+    - terminal/create
+  always_deny:
+    - terminal/kill
