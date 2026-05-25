@@ -6,4 +6,5 @@ pub mod rate_limit;
 pub mod router;
 pub mod routes;
 pub mod session_manager;
+pub mod webhooks;
 pub mod ws;
