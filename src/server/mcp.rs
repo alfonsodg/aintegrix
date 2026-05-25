@@ -108,7 +108,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                 },
                 {
                     "name": "acp_create_session",
-                    "description": "Create a new session on a specific ACP agent. This runs on a REMOTE server — use 'repo' to specify which GitLab repository the agent should work on. The repo is cloned fresh. You MUST push your changes before calling this tool.",
+                    "description": "Create a new session on a specific ACP agent. Use 'workspace_root' for local paths or 'repo' to clone from GitLab (remote server only). If the directory exists locally, prefer workspace_root.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
@@ -130,7 +130,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                             },
                             "workspace_root": {
                                 "type": "string",
-                                "description": "Server-side directory path. Only use if you know the path exists on the remote server. Prefer 'repo' instead."
+                                "description": "Local directory path where the code lives. Use this when the path exists on this machine."
                             }
                         },
                         "required": ["agent"]
