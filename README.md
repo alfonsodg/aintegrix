@@ -1,164 +1,216 @@
-# AIntegriX
+<p align="center">
+  <img src="docs/logo.svg" alt="AIntegriX" width="400"/>
+</p>
 
-Centralized ACP (Agent Client Protocol) server for multi-agent coordination. Manages, routes, and orchestrates multiple AI coding agents through a single HTTP/MCP interface.
+<p align="center">
+  <strong>One API. Five AI agents. Infinite possibilities.</strong>
+</p>
 
-## Objectives
+<p align="center">
+  <a href="https://coord-acp.apulab.info/health">
+    <img src="https://img.shields.io/badge/status-live-brightgreen" alt="Status"/>
+  </a>
+  <img src="https://img.shields.io/badge/agents-5-blue" alt="Agents"/>
+  <img src="https://img.shields.io/badge/protocol-ACP-purple" alt="ACP"/>
+  <img src="https://img.shields.io/badge/rust-stable-orange" alt="Rust"/>
+</p>
 
-- Provide a single entry point to coordinate 5+ ACP-compatible coding agents
-- Expose both REST API and native MCP server for universal integration
-- Enable any MCP-compatible agent to delegate work to other agents
-- Zero-UI, config-as-code, fast, lightweight
+---
 
-## Features
+## What is AIntegriX?
 
-- JSON-RPC 2.0 ACP protocol over stdio (agent subprocess management)
-- REST API with Bearer token authentication
-- Native MCP server at `/mcp` (SSE transport)
-- Real-time SSE streaming of agent responses
-- Multi-agent orchestration (parallel, race, jury strategies)
-- Agent chaining / pipelines (sequential multi-step workflows)
-- Intelligent agent routing (YAML rules engine: keywords, file patterns, task type)
-- Session fork (try same conversation with different agent)
-- Git-aware sessions (auto-inject branch, commits, diff as context)
-- Prompt rewriting per agent (configurable prefix/suffix)
-- Context injection (auto-load steering files on session create)
-- GitLab webhook triggers (MR → auto code review)
-- Cost tracking (usage per agent/session/model)
-- Live agent status (idle/busy with session counts)
-- Declarative permission policy engine (YAML)
-- Per-agent model selection (configurable defaults + dynamic override)
-- Per-tenant rate limiting (token bucket)
-- SQLite persistence (sessions, turns, agent state)
-- Prometheus metrics at `/metrics`
-- Graceful shutdown (SIGTERM/SIGINT)
+AIntegriX is a **centralized orchestrator** that lets any AI agent delegate work to other AI agents through a single MCP endpoint. Think of it as a **load balancer for AI coding agents**.
 
-## Agents Supported
+```
+Your Agent (Kiro, Claude, etc.)
+       │
+       ▼ MCP
+┌─────────────────────────────────┐
+│         AIntegriX               │
+│   Route • Orchestrate • Stream  │
+└──┬──────┬──────┬──────┬──────┬──┘
+   │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼
+ Kiro  Copilot OpenCode Claude Codex
+```
 
-| Agent | Command | Version | Default Model |
-|-------|---------|---------|---------------|
-| Kiro CLI | `kiro-cli acp` | 2.3.0 | claude-opus-4.6 |
-| GitHub Copilot | `copilot --acp` | 1.0.48 | gpt-5.3-codex |
-| OpenCode | `opencode acp` | 1.15.3 | xiaomi-mimo/mimo-v2.5-pro |
-| Claude Code | `claude-agent-acp` | 0.37.0 | minimax-2.7 |
-| Codex CLI | `codex-acp` | adapter | gpt-5.5-xhigh |
+**One prompt. Any agent. Real results.**
 
-## Tech Stack
+---
 
-- Language: Rust (latest stable)
-- Async runtime: tokio
-- HTTP framework: axum
-- Database: SQLite (sqlx, WAL mode)
-- Config: YAML (serde_yaml)
-- Protocol: JSON-RPC 2.0 over stdio
+## Why AIntegriX?
+
+| Problem | Solution |
+|---------|----------|
+| Each agent has different strengths | **Smart routing** picks the best agent for each task |
+| Can't compare agent responses | **Orchestration** sends to N agents in parallel |
+| No way to chain agent work | **Pipelines** feed output from one agent to the next |
+| Agents can't read your latest code | **Auto-clone** from GitLab or direct local filesystem |
+| Responses arrive all at once | **SSE streaming** shows chunks in real-time |
+| Manual code review requests | **Webhooks** auto-trigger review on MR open |
+
+---
+
+## Workflow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    YOUR DEVELOPMENT FLOW                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Code locally                                             │
+│       │                                                      │
+│  2. Ask AIntegriX:                                           │
+│       "Review src/ for security issues"                      │
+│       │                                                      │
+│  3. AIntegriX routes to Claude (security expert)             │
+│       │                                                      │
+│  4. Claude reads your files, analyzes, responds              │
+│       │                                                      │
+│  5. You get the review in your agent's context               │
+│                                                              │
+│  ─── OR ───                                                  │
+│                                                              │
+│  Pipeline: OpenCode generates → Claude reviews → Kiro fixes  │
+│                                                              │
+│  ─── OR ───                                                  │
+│                                                              │
+│  Race: Send to 3 agents, first response wins                 │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Quick Start
 
+### Local (recommended for development)
+
 ```bash
-# Build
+# Install
+git clone git@scovil.labtau.com:ccvass/model-shared/aintegrix.git
+cd aintegrix
 cargo build --release
+./configs/install.sh ~/.local/share/aintegrix
 
-# Run with config
-./target/release/aintegrix --config samples/aintegrix.yaml
-
-# Or use the CLI
-aintegrix-cli --url https://coord-acp.apulab.info status
-```
-
-## MCP Integration
-
-Any MCP-compatible agent can use AIntegriX as a tool server:
-
-**Remote (HTTPS):**
-```json
-{
-  "mcpServers": {
-    "aintegrix": {
-      "url": "https://coord-acp.apulab.info/mcp",
-      "type": "http",
-      "headers": {
-        "Authorization": "Bearer <token>"
-      }
-    }
-  }
-}
-```
-
-**Local (via mcp-proxy):**
-```json
+# Add to your agent's MCP config
 {
   "mcpServers": {
     "aintegrix": {
       "command": "mcp-proxy",
-      "args": ["-H", "Authorization", "Bearer aintegrix-local-key-2026", "--transport", "streamablehttp", "http://localhost:8050/mcp"],
+      "args": ["-H", "Authorization", "Bearer aintegrix-local-key-2026",
+               "--transport", "streamablehttp", "http://localhost:8050/mcp"],
       "env": {}
     }
   }
 }
 ```
 
-Requires: `npm install -g mcp-proxy`
-
-**Local mode**: Tool schema only shows `workspace_root` (local paths). No repo/branch params.
-**Remote mode**: Tool schema auto-detects repo paths and clones from GitLab.
-
-Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp_close_session`
-
-### Auto-clone repos
-
-Create a session with a fresh clone of any GitLab repo:
+### Remote (for teams / CI)
 
 ```json
-{"name": "acp_create_session", "arguments": {"agent": "opencode", "repo": "ccvass/voxcix/admin", "branch": "develop"}}
+{
+  "mcpServers": {
+    "aintegrix": {
+      "url": "https://coord-acp.apulab.info/mcp",
+      "type": "http",
+      "headers": {"Authorization": "Bearer <token>"}
+    }
+  }
+}
 ```
 
-The agent works on the latest code from the specified branch. Workspace is cleaned on session close.
+---
 
-### Important: Push before delegating
+## Agents
 
-AIntegriX clones from the remote repository. The calling agent **must ensure code is pushed** before delegating work:
+| Agent | Model | Best For |
+|-------|-------|----------|
+| 🧠 **Kiro** | claude-opus-4.6 | Rust, architecture, complex reasoning |
+| 🤖 **Copilot** | gpt-5.3-codex | Frontend, React, quick edits |
+| ⚡ **OpenCode** | mimo-v2.5-pro | Fast analysis, multi-file reads |
+| 🔍 **Claude** | minimax-2.7 | Security review, deep analysis |
+| 🛠️ **Codex** | gpt-5.5-xhigh | Python, refactoring, generation |
 
-```
-1. Agent works locally on code
-2. Agent commits and pushes to remote branch
-3. Agent calls acp_create_session(repo="...", branch="develop")
-4. Remote agent analyzes the latest pushed code
-```
+---
 
-If code is not pushed, the remote agent will see an outdated version.
+## Features
 
-## API Endpoints
+### Core
+- **5 ACP agents** with real subprocess management
+- **MCP server** — any agent can use AIntegriX as a tool
+- **REST API** with Bearer auth
+- **SSE streaming** of agent responses in real-time
+
+### Orchestration
+- **Parallel** — send to N agents, collect all responses
+- **Race** — first response wins, cancel others
+- **Jury** — N agents respond, a judge picks the best
+- **Pipelines** — sequential multi-step workflows
+
+### Intelligence
+- **Auto-routing** — YAML rules pick the best agent by keywords/file patterns
+- **Prompt rewriting** — per-agent prefix/suffix
+- **Git-aware sessions** — inject branch, commits, diff as context
+- **Context injection** — auto-load steering files
+
+### Operations
+- **Auto-clone repos** — fresh checkout from GitLab (remote mode)
+- **Local filesystem** — direct access to your code (local mode)
+- **Webhook triggers** — GitLab MR → auto code review
+- **Session fork** — try same conversation with different agent
+- **Cost tracking** — usage per agent/session/model
+- **Live status** — agent idle/busy with session counts
+
+---
+
+## API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Liveness (no auth) |
-| GET | `/api/v1/agents` | List agents |
-| GET | `/api/v1/agents/{name}/models` | List models for agent |
-| GET | `/api/v1/agents/status` | Live agent status (idle/busy/sessions) |
-| GET | `/api/v1/usage` | Cost tracking (prompts per agent) |
-| POST | `/api/v1/sessions` | Create session (supports `auto_route`, `git_context`) |
-| GET | `/api/v1/sessions/{id}` | Get session info |
-| POST | `/api/v1/sessions/{id}/prompt` | Send prompt (with prompt rewriting) |
-| POST | `/api/v1/sessions/{id}/stream` | Send prompt with SSE streaming |
-| POST | `/api/v1/sessions/{id}/fork` | Fork session to different agent |
-| DELETE | `/api/v1/sessions/{id}` | Close session |
-| POST | `/api/v1/orchestrate` | Multi-agent orchestration (parallel/race/jury) |
-| POST | `/api/v1/pipelines` | Agent chaining (sequential steps) |
-| POST | `/api/v1/stream` | Create session + stream in one call |
-| POST | `/api/v1/webhooks/gitlab` | Receive GitLab webhooks (auto code review) |
+| POST | `/api/v1/sessions` | Create session |
+| POST | `/api/v1/sessions/{id}/prompt` | Send prompt |
+| POST | `/api/v1/sessions/{id}/fork` | Fork to another agent |
+| POST | `/api/v1/orchestrate` | Multi-agent (parallel/race/jury) |
+| POST | `/api/v1/pipelines` | Sequential agent chaining |
+| POST | `/api/v1/stream` | Create + stream SSE |
+| POST | `/api/v1/webhooks/gitlab` | Receive webhook events |
+| GET | `/api/v1/agents/status` | Live agent status |
+| GET | `/api/v1/usage` | Cost tracking |
 | POST | `/mcp` | MCP JSON-RPC endpoint |
+
+---
 
 ## Documentation
 
-- [Development Standards](docs/STANDARDS.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [API Reference](docs/API.md)
-- [Configuration](docs/CONFIGURATION.md)
 - [Installation](docs/INSTALL.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [API Reference](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development Standards](docs/STANDARDS.md)
+- [Diagrams](docs/DIAGRAMS.md)
 
-## Deployment
+---
 
-See `REMOTE.md` (not tracked — contains credentials).
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Language | Rust (latest stable) |
+| Runtime | tokio |
+| HTTP | axum |
+| Protocol | ACP (JSON-RPC 2.0 over stdio) |
+| Database | SQLite (sqlx) |
+| Config | YAML |
+
+---
 
 ## License
 
 MIT
+
+---
+
+<p align="center">
+  <sub>Built with 🦀 Rust • Powered by ACP • Made by <a href="https://scovil.labtau.com/ccvass">CCVASS</a></sub>
+</p>
