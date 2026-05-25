@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 
 mod agent;
@@ -21,18 +23,28 @@ async fn main() {
     let cli = Cli::parse();
     tracing::info!(config_path = %cli.config, "starting aintegrix");
 
-    match config::loader::load(&cli.config) {
-        Ok(cfg) => {
-            tracing::info!(
-                agents = cfg.agents.len(),
-                host = %cfg.server.host,
-                port = cfg.server.port,
-                "configuration loaded"
-            );
-        }
+    let cfg = match config::loader::load(&cli.config) {
+        Ok(cfg) => cfg,
         Err(e) => {
             tracing::error!(error = %e, "failed to load configuration");
             std::process::exit(1);
         }
-    }
+    };
+
+    let addr = format!("{}:{}", cfg.server.host, cfg.server.port);
+    tracing::info!(agents = cfg.agents.len(), %addr, "configuration loaded");
+
+    let state = Arc::new(server::routes::AppState { config: cfg });
+    let app = server::routes::create_router(state);
+
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap_or_else(|e| {
+        tracing::error!(error = %e, %addr, "failed to bind");
+        std::process::exit(1);
+    });
+
+    tracing::info!(%addr, "server listening");
+    axum::serve(listener, app).await.unwrap_or_else(|e| {
+        tracing::error!(error = %e, "server error");
+        std::process::exit(1);
+    });
 }

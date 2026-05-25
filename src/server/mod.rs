@@ -1,1 +1,1 @@
-// HTTP server module — axum routes and handlers
+pub mod routes;
