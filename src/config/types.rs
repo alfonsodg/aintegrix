@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub agents: HashMap<String, AgentConfig>,
@@ -13,7 +13,7 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     #[serde(default = "default_host")]
     pub host: String,
@@ -21,7 +21,7 @@ pub struct ServerConfig {
     pub port: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AgentConfig {
     pub command: String,
     #[serde(default)]
@@ -34,9 +34,13 @@ pub struct AgentConfig {
     pub auto_restart: bool,
     #[serde(default)]
     pub env: HashMap<String, String>,
+    #[serde(default)]
+    pub default_model: Option<String>,
+    #[serde(default)]
+    pub models: Vec<String>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct PermissionsConfig {
     #[serde(default = "default_policy")]
     pub default_policy: String,
@@ -48,7 +52,7 @@ pub struct PermissionsConfig {
     pub always_deny: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LoggingConfig {
     #[serde(default = "default_log_level")]
     pub level: String,

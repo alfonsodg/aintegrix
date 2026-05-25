@@ -122,6 +122,10 @@ fn handle_tools_list(id: Value) -> McpResponse {
                             "workspace_root": {
                                 "type": "string",
                                 "description": "Workspace directory path"
+                            },
+                            "model": {
+                                "type": "string",
+                                "description": "Model to use (optional, uses agent default if not specified)"
                             }
                         },
                         "required": ["agent"]
@@ -202,11 +206,18 @@ fn handle_tools_call(id: Value, params: Option<Value>, config: &AppConfig) -> Mc
                     }),
                 );
             }
+            let agent_cfg = &config.agents[agent];
+            let model = arguments
+                .get("model")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_owned())
+                .or_else(|| agent_cfg.default_model.clone())
+                .unwrap_or_else(|| "default".to_owned());
             let session_id = uuid::Uuid::new_v4().to_string();
             McpResponse::success(
                 id,
                 json!({
-                    "content": [{"type": "text", "text": format!("Session created: {} (agent: {})", session_id, agent)}]
+                    "content": [{"type": "text", "text": format!("Session created: {} (agent: {}, model: {})", session_id, agent, model)}]
                 }),
             )
         }
@@ -252,6 +263,8 @@ mod tests {
                     max_sessions: 3,
                     auto_restart: true,
                     env: HashMap::new(),
+                    default_model: None,
+                    models: vec![],
                 },
             )]),
             permissions: PermissionsConfig::default(),

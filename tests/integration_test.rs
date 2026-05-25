@@ -13,6 +13,8 @@ fn mock_agent_config() -> AgentConfig {
         max_sessions: 3,
         auto_restart: false,
         env: HashMap::new(),
+        default_model: None,
+        models: vec![],
     }
 }
 

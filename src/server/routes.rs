@@ -23,6 +23,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/sessions/{id}", get(get_session))
         .route("/api/v1/sessions/{id}", delete(close_session))
         .route("/api/v1/sessions/{id}/prompt", post(send_prompt))
+        .route("/api/v1/agents/{name}/models", get(list_agent_models))
         .route("/mcp", post(super::mcp::mcp_handler))
         .route("/mcp/sse", get(super::mcp::mcp_sse))
         .with_state(state)
@@ -81,6 +82,9 @@ struct CreateSessionRequest {
     #[allow(dead_code)]
     #[serde(default = "default_workspace")]
     workspace_root: String,
+    #[allow(dead_code)]
+    #[serde(default)]
+    model: Option<String>,
 }
 
 fn default_workspace() -> String {
@@ -182,4 +186,31 @@ async fn send_prompt(
             message: "session not found".to_owned(),
         }),
     ))
+}
+
+#[derive(Serialize)]
+struct AgentModels {
+    agent: String,
+    default_model: Option<String>,
+    models: Vec<String>,
+}
+
+async fn list_agent_models(
+    Path(name): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<AgentModels>, (StatusCode, Json<ApiError>)> {
+    match state.config.agents.get(&name) {
+        Some(cfg) => Ok(Json(AgentModels {
+            agent: name,
+            default_model: cfg.default_model.clone(),
+            models: cfg.models.clone(),
+        })),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                code: "agent_not_found".to_owned(),
+                message: format!("agent '{name}' not configured"),
+            }),
+        )),
+    }
 }
