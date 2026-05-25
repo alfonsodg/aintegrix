@@ -23,6 +23,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/sessions/{id}", get(get_session))
         .route("/api/v1/sessions/{id}", delete(close_session))
         .route("/api/v1/sessions/{id}/prompt", post(send_prompt))
+        .route("/mcp", post(super::mcp::mcp_handler))
+        .route("/mcp/sse", get(super::mcp::mcp_sse))
         .with_state(state)
 }
 

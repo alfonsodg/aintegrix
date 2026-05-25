@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod fs_handler;
+pub mod mcp;
 pub mod metrics;
 pub mod permissions;
 pub mod rate_limit;
