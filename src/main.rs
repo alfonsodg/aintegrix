@@ -36,7 +36,10 @@ async fn main() {
     let addr = format!("{}:{}", cfg.server.host, cfg.server.port);
     tracing::info!(agents = cfg.agents.len(), %addr, "configuration loaded");
 
-    let state = Arc::new(server::routes::AppState { config: cfg });
+    let state = Arc::new(server::routes::AppState {
+        config: cfg,
+        sessions: dashmap::DashMap::new(),
+    });
     let app = server::routes::create_router(state)
         .layer(axum::middleware::from_fn(server::auth::auth_middleware));
 
