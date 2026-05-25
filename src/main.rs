@@ -5,6 +5,7 @@ use clap::Parser;
 mod agent;
 mod config;
 mod error;
+mod persistence;
 mod protocol;
 mod server;
 
