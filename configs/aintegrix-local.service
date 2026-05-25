@@ -1,0 +1,16 @@
+[Unit]
+Description=AIntegriX - Local ACP Multi-Agent Coordinator
+After=network.target
+
+[Service]
+Type=simple
+User=alfonsodg
+WorkingDirectory=/home/alfonsodg/Devel/ccvass/aintegrix
+ExecStart=/home/alfonsodg/Devel/ccvass/aintegrix/target/release/aintegrix --config /home/alfonsodg/Devel/ccvass/aintegrix/samples/aintegrix-local.yaml
+Environment=AINTEGRIX_API_KEY=aintegrix-local-key-2026
+Environment=PATH=/home/alfonsodg/.local/bin:/home/alfonsodg/.nvm/versions/node/v24.14.1/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
