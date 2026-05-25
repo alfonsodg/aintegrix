@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
+use tokio::signal;
 
 mod agent;
 mod config;
@@ -44,8 +45,36 @@ async fn main() {
     });
 
     tracing::info!(%addr, "server listening");
-    axum::serve(listener, app).await.unwrap_or_else(|e| {
-        tracing::error!(error = %e, "server error");
-        std::process::exit(1);
-    });
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "server error");
+            std::process::exit(1);
+        });
+
+    tracing::info!("shutdown complete");
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => tracing::info!("received SIGINT, shutting down"),
+        () = terminate => tracing::info!("received SIGTERM, shutting down"),
+    }
 }
