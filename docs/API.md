@@ -59,6 +59,8 @@ Create a new session.
 {"auto_route": true, "prompt": "fix the React component", "repo": "ccvass/voxcix/admin", "branch": "develop"}
 ```
 
+> **Note**: When using `repo`, ensure code is pushed to the remote branch first. AIntegriX clones from the remote — unpushed local changes will not be visible to the agent.
+
 **Response** (201):
 ```json
 {"id": "uuid", "agent": "kiro", "status": "active"}

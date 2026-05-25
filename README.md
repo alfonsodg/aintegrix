@@ -94,6 +94,19 @@ Create a session with a fresh clone of any GitLab repo:
 
 The agent works on the latest code from the specified branch. Workspace is cleaned on session close.
 
+### Important: Push before delegating
+
+AIntegriX clones from the remote repository. The calling agent **must ensure code is pushed** before delegating work:
+
+```
+1. Agent works locally on code
+2. Agent commits and pushes to remote branch
+3. Agent calls acp_create_session(repo="...", branch="develop")
+4. Remote agent analyzes the latest pushed code
+```
+
+If code is not pushed, the remote agent will see an outdated version.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
