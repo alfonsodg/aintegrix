@@ -88,7 +88,7 @@ Your Agent (Kiro, Claude, etc.)
 
 ```bash
 # Install
-git clone git@scovil.labtau.com:ccvass/model-shared/aintegrix.git
+git clone <your-repo-url>
 cd aintegrix
 cargo build --release
 ./configs/install.sh ~/.local/share/aintegrix
@@ -207,10 +207,10 @@ cargo build --release
 
 ## License
 
-MIT
+Apache-2.0
 
 ---
 
 <p align="center">
-  <sub>Built with 🦀 Rust • Powered by ACP • Made by <a href="https://scovil.labtau.com/ccvass">CCVASS</a></sub>
+  <sub>Built with 🦀 Rust • Powered by ACP</sub>
 </p>
