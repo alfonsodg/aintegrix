@@ -1,13 +1,17 @@
 pub mod auth;
 pub mod fs_handler;
+pub mod git_context;
 pub mod mcp;
 pub mod metrics;
 pub mod orchestrate;
 pub mod permissions;
+pub mod pipeline;
 pub mod rate_limit;
 pub mod router;
 pub mod routes;
 pub mod routing;
 pub mod session_manager;
+pub mod streaming;
+pub mod webhook_trigger;
 pub mod webhooks;
 pub mod ws;

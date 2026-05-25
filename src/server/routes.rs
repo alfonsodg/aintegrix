@@ -15,9 +15,9 @@ use crate::config::types::AppConfig;
 
 /// A live session: owns the agent subprocess
 pub struct SessionEntry {
-    agent_name: String,
-    acp_session_id: String,
-    process: AgentProcess,
+    pub agent_name: String,
+    pub acp_session_id: String,
+    pub process: AgentProcess,
 }
 
 /// Shared application state
@@ -38,6 +38,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/sessions/{id}", delete(close_session))
         .route("/api/v1/sessions/{id}/prompt", post(send_prompt))
         .route("/api/v1/orchestrate", post(super::orchestrate::orchestrate))
+        .route("/api/v1/pipelines", post(super::pipeline::run_pipeline))
+        .route("/api/v1/sessions/{id}/stream", post(super::streaming::stream_prompt))
+        .route("/api/v1/stream", post(super::streaming::create_and_stream))
+        .route("/api/v1/webhooks/gitlab", post(super::webhook_trigger::gitlab_webhook))
         .route("/mcp", post(super::mcp::mcp_handler))
         .route("/mcp/sse", get(super::mcp::mcp_sse))
         .with_state(state)
@@ -130,6 +134,9 @@ struct CreateSessionRequest {
     file_paths: Vec<String>,
     #[serde(default)]
     task_type: Option<String>,
+    /// If true, inject git repo context (branch, commits, diff) into session
+    #[serde(default)]
+    git_context: bool,
 }
 
 fn default_workspace() -> String {
@@ -249,6 +256,15 @@ async fn create_session(
             message: format!("ACP session/new failed: {e}"),
         }))
     })?;
+
+    // Inject git context if requested
+    if req.git_context
+        && let Some(ctx) = super::git_context::extract(&req.workspace_root)
+    {
+        let context_text = super::git_context::format_for_prompt(&ctx);
+        let context_msg = vec![serde_json::json!({"type": "text", "text": format!("[Git Context]\n{context_text}")})];
+        let _ = acp::session_prompt(&mut process, &acp_session_id, context_msg, std::time::Duration::from_secs(30)).await;
+    }
 
     let model = req.model.unwrap_or_else(|| {
         config.default_model.clone().unwrap_or_else(|| "default".to_owned())
