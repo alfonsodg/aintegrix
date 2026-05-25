@@ -124,24 +124,16 @@ fn handle_tools_list(id: Value, config: &crate::config::types::AppConfig) -> Mcp
                     "description": create_desc,
                     "inputSchema": {
                         "type": "object",
-                        "properties": {
-                            "agent": {
-                                "type": "string",
-                                "description": "Agent name (kiro, copilot, opencode, claude, codex)"
-                            },
-                            "workspace_root": {
-                                "type": "string",
-                                "description": ws_desc
-                            },
-                            "branch": {
-                                "type": "string",
-                                "description": "Branch to clone (defaults to 'develop'). Only used for repo paths."
-                            },
-                            "model": {
-                                "type": "string",
-                                "description": "Model to use (optional, uses agent default if not specified)"
-                            }
-                        },
+                        "properties": if is_local { json!({
+                            "agent": {"type": "string", "description": "Agent name (kiro, copilot, opencode, claude, codex)"},
+                            "workspace_root": {"type": "string", "description": ws_desc},
+                            "model": {"type": "string", "description": "Model to use (optional)"}
+                        }) } else { json!({
+                            "agent": {"type": "string", "description": "Agent name (kiro, copilot, opencode, claude, codex)"},
+                            "workspace_root": {"type": "string", "description": ws_desc},
+                            "branch": {"type": "string", "description": "Branch to clone (defaults to 'develop')"},
+                            "model": {"type": "string", "description": "Model to use (optional)"}
+                        }) },
                         "required": ["agent"]
                     }
                 },
