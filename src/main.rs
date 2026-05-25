@@ -20,4 +20,19 @@ async fn main() {
 
     let cli = Cli::parse();
     tracing::info!(config_path = %cli.config, "starting aintegrix");
+
+    match config::loader::load(&cli.config) {
+        Ok(cfg) => {
+            tracing::info!(
+                agents = cfg.agents.len(),
+                host = %cfg.server.host,
+                port = cfg.server.port,
+                "configuration loaded"
+            );
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to load configuration");
+            std::process::exit(1);
+        }
+    }
 }
