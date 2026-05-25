@@ -41,7 +41,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/sessions/{id}", get(get_session))
         .route("/api/v1/sessions/{id}", delete(close_session))
         .route("/api/v1/sessions/{id}/prompt", post(send_prompt))
-        .route("/api/v1/sessions/{id}/fork", post(fork_session))
+        .route("/api/v1/sessions/{id}/fork", post(super::handlers::fork_session))
         .route("/api/v1/orchestrate", post(super::orchestrate::orchestrate))
         .route("/api/v1/pipelines", post(super::pipeline::run_pipeline))
         .route("/api/v1/sessions/{id}/stream", post(super::streaming::stream_prompt))
@@ -173,12 +173,12 @@ struct PromptResponse {
 }
 
 #[derive(Serialize)]
-struct ApiError {
-    code: String,
-    message: String,
+pub struct ApiError {
+    pub code: String,
+    pub message: String,
 }
 
-fn not_found(code: &str, message: String) -> (StatusCode, Json<ApiError>) {
+pub fn not_found(code: &str, message: String) -> (StatusCode, Json<ApiError>) {
     (StatusCode::NOT_FOUND, Json(ApiError { code: code.to_owned(), message }))
 }
 
@@ -367,7 +367,7 @@ async fn send_prompt(
 
     // Apply prompt rewriting (prefix/suffix)
     let messages = if let Some(cfg) = state.config.agents.get(&agent_name) {
-        rewrite_messages(req.messages, cfg.prompt_prefix.as_deref(), cfg.prompt_suffix.as_deref())
+        super::handlers::rewrite_messages(req.messages, cfg.prompt_prefix.as_deref(), cfg.prompt_suffix.as_deref())
     } else {
         req.messages
     };
@@ -393,106 +393,4 @@ async fn send_prompt(
     super::cost_tracker::record_usage(&state.usage, &agent_name, &model, &id);
 
     Ok(Json(PromptResponse { stop_reason }))
-}
-
-fn rewrite_messages(
-    mut messages: Vec<serde_json::Value>,
-    prefix: Option<&str>,
-    suffix: Option<&str>,
-) -> Vec<serde_json::Value> {
-    if prefix.is_none() && suffix.is_none() {
-        return messages;
-    }
-    // Wrap first text message with prefix/suffix
-    if let Some(msg) = messages.first_mut()
-        && let Some(text) = msg.get("text").and_then(|t| t.as_str())
-    {
-        let mut new_text = String::new();
-        if let Some(p) = prefix {
-            new_text.push_str(p);
-            new_text.push('\n');
-        }
-        new_text.push_str(text);
-        if let Some(s) = suffix {
-            new_text.push('\n');
-            new_text.push_str(s);
-        }
-        msg["text"] = serde_json::Value::String(new_text);
-    }
-    messages
-}
-
-// --- Fork ---
-
-#[derive(Deserialize)]
-struct ForkRequest {
-    target_agent: String,
-}
-
-#[derive(Serialize)]
-struct ForkResponse {
-    id: String,
-    agent: String,
-    forked_from: String,
-    status: String,
-}
-
-async fn fork_session(
-    Path(id): Path<String>,
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<ForkRequest>,
-) -> Result<(StatusCode, Json<ForkResponse>), (StatusCode, Json<ApiError>)> {
-    // Verify source session exists
-    let source_agent = {
-        let entry_arc = state.sessions.get(&id).ok_or_else(|| {
-            not_found("session_not_found", format!("session '{id}' not found"))
-        })?.value().clone();
-        let entry = entry_arc.lock().await;
-        entry.agent_name.clone()
-    };
-
-    // Verify target agent exists
-    let config = state.config.agents.get(&req.target_agent).ok_or_else(|| {
-        not_found("agent_not_found", format!("agent '{}' not configured", req.target_agent))
-    })?;
-
-    // Spawn new agent for the fork
-    let mut process = AgentProcess::spawn(&req.target_agent, config).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
-            code: "spawn_failed".to_owned(),
-            message: format!("failed to spawn agent: {e}"),
-        }))
-    })?;
-
-    acp::initialize(&mut process).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
-            code: "initialize_failed".to_owned(),
-            message: format!("ACP initialize failed: {e}"),
-        }))
-    })?;
-
-    let acp_session_id = acp::session_new(&mut process, "/tmp").await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
-            code: "session_new_failed".to_owned(),
-            message: format!("ACP session/new failed: {e}"),
-        }))
-    })?;
-
-    let fork_id = format!("{}_{}", req.target_agent, uuid::Uuid::new_v4());
-    let entry = SessionEntry {
-        agent_name: req.target_agent.clone(),
-        acp_session_id,
-        process,
-        workspace_path: None,
-    };
-
-    state.sessions.insert(fork_id.clone(), Arc::new(Mutex::new(entry)));
-    tracing::info!(fork = %fork_id, from = %id, source_agent = %source_agent, target_agent = %req.target_agent, "session forked");
-
-    Ok((StatusCode::CREATED, Json(ForkResponse {
-        id: fork_id,
-        agent: req.target_agent,
-        forked_from: id,
-        status: "active".to_owned(),
-    })))
 }
