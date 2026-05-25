@@ -98,6 +98,9 @@ Any MCP-compatible agent can use AIntegriX as a tool server:
 
 Requires: `npm install -g mcp-proxy`
 
+**Local mode**: Tool schema only shows `workspace_root` (local paths). No repo/branch params.
+**Remote mode**: Tool schema auto-detects repo paths and clones from GitLab.
+
 Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp_close_session`
 
 ### Auto-clone repos

@@ -26,8 +26,21 @@ export AINTEGRIX_API_KEY=local-dev-key
 cargo run -- --config samples/aintegrix-local.yaml
 ```
 
-Then configure your agent's MCP to point to localhost:
+### Local vs Remote
 
+| | Local | Remote (dev-gcp) |
+|---|---|---|
+| URL | `http://localhost:8050` via mcp-proxy | `https://coord-acp.apulab.info/mcp` |
+| MCP config | `command: mcp-proxy` (stdio) | `type: http` (direct) |
+| Code access | `workspace_root` with local paths | `workspace_root` with repo path (auto-clones) |
+| Needs push | No | Yes |
+| Sees uncommitted changes | Yes | No |
+| Tool schema | Only `agent`, `workspace_root`, `model` | Adds `branch` param |
+| Config | `samples/aintegrix-local.yaml` | `/opt/aintegrix/aintegrix.yaml` |
+
+### MCP config for agents
+
+**Local (via mcp-proxy — required for Kiro/agents that expect stdio):**
 ```json
 {
   "mcpServers": {
@@ -40,27 +53,24 @@ Then configure your agent's MCP to point to localhost:
 }
 ```
 
-Requires `mcp-proxy`: `npm install -g mcp-proxy`
-
-> **Why mcp-proxy?** Kiro and other agents expect OAuth or stdio transport. `mcp-proxy` bridges stdio ↔ HTTP, bypassing OAuth discovery on localhost.
-
-### Local vs Remote
-
-| | Local | Remote (dev-gcp) |
-|---|---|---|
-| URL | `http://localhost:8050/mcp` | `https://coord-acp.apulab.info/mcp` |
-| Code access | `workspace_root` with local paths | `repo` param (auto-clones from GitLab) |
-| Needs push | No | Yes |
-| Sees uncommitted changes | Yes | No |
-| Config | `samples/aintegrix-local.yaml` | `/opt/aintegrix/aintegrix.yaml` |
-
-### Usage (local)
-
-```bash
-# Agent can use local paths directly
-acp_create_session(agent="opencode", workspace_root="/home/user/project")
-acp_prompt(session_id="...", message="review src/main.rs")
+**Remote (direct HTTP):**
+```json
+{
+  "mcpServers": {
+    "aintegrix": {
+      "url": "https://coord-acp.apulab.info/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer aintegrix-dev-key-2026"
+      }
+    }
+  }
+}
 ```
+
+Requires: `npm install -g mcp-proxy`
+
+> **Why mcp-proxy for local?** Agents like Kiro expect stdio or attempt OAuth on HTTP URLs. `mcp-proxy` bridges stdio ↔ HTTP, bypassing OAuth discovery on localhost.
 
 ## Deploy (systemd)
 
