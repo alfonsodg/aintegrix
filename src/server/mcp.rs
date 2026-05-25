@@ -108,7 +108,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                 },
                 {
                     "name": "acp_create_session",
-                    "description": "Create a new session on a specific ACP agent",
+                    "description": "Create a new session on a specific ACP agent. IMPORTANT: When using 'repo', you MUST commit and push your changes first. The remote agent clones from the remote branch — unpushed local changes are invisible. If needed, push to a temporary branch before calling this tool.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
