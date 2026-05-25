@@ -123,6 +123,14 @@ fn handle_tools_list(id: Value) -> McpResponse {
                             "model": {
                                 "type": "string",
                                 "description": "Model to use (optional, uses agent default if not specified)"
+                            },
+                            "repo": {
+                                "type": "string",
+                                "description": "GitLab repo path to auto-clone (e.g. 'ccvass/voxis/admin'). Clones fresh into temp workspace."
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch to clone (defaults to 'develop')"
                             }
                         },
                         "required": ["agent"]
@@ -183,6 +191,20 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
                 return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: agent '{}' not found. Available: {:?}", agent, state.config.agents.keys().collect::<Vec<_>>())}], "isError": true}));
             };
             let workspace = arguments.get("workspace_root").and_then(|v| v.as_str()).unwrap_or("/tmp");
+
+            // Auto-clone repo if specified
+            let (resolved_workspace, ws_path) = if let Some(repo) = arguments.get("repo").and_then(|v| v.as_str()) {
+                let branch = arguments.get("branch").and_then(|v| v.as_str()).unwrap_or("develop");
+                match super::workspace::clone_repo(repo, branch).await {
+                    Ok(path) => {
+                        let p = path.to_string_lossy().to_string();
+                        (p.clone(), Some(p))
+                    }
+                    Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error cloning repo: {e}")}], "isError": true})),
+                }
+            } else {
+                (workspace.to_owned(), None)
+            };
             let mut process = match crate::agent::process::AgentProcess::spawn(agent, cfg).await {
                 Ok(p) => p,
                 Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error spawning agent: {e}")}], "isError": true})),
@@ -190,12 +212,12 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             if let Err(e) = crate::agent::session::initialize(&mut process).await {
                 return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error initializing: {e}")}], "isError": true}));
             }
-            let acp_session_id = match crate::agent::session::session_new(&mut process, workspace).await {
+            let acp_session_id = match crate::agent::session::session_new(&mut process, &resolved_workspace).await {
                 Ok(s) => s,
                 Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error creating session: {e}")}], "isError": true})),
             };
             let session_id = format!("{}_{}", agent, uuid::Uuid::new_v4());
-            let entry = super::routes::SessionEntry { agent_name: agent.to_owned(), acp_session_id, process };
+            let entry = super::routes::SessionEntry { agent_name: agent.to_owned(), acp_session_id, process, workspace_path: ws_path };
             state.sessions.insert(session_id.clone(), std::sync::Arc::new(tokio::sync::Mutex::new(entry)));
             let model = arguments.get("model").and_then(|v| v.as_str()).map(|s| s.to_owned()).or_else(|| cfg.default_model.clone()).unwrap_or_else(|| "default".to_owned());
             McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Session created: {} (agent: {}, model: {})", session_id, agent, model)}]}))

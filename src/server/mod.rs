@@ -17,4 +17,5 @@ pub mod session_manager;
 pub mod streaming;
 pub mod webhook_trigger;
 pub mod webhooks;
+pub mod workspace;
 pub mod ws;

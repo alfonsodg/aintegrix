@@ -18,6 +18,7 @@ pub struct SessionEntry {
     pub agent_name: String,
     pub acp_session_id: String,
     pub process: AgentProcess,
+    pub workspace_path: Option<String>,
 }
 
 /// Shared application state
@@ -141,6 +142,12 @@ struct CreateSessionRequest {
     /// If true, inject git repo context (branch, commits, diff) into session
     #[serde(default)]
     git_context: bool,
+    /// GitLab repo path — triggers auto-clone (e.g. "ccvass/voxis/admin")
+    #[serde(default)]
+    repo: Option<String>,
+    /// Branch to clone (defaults to "develop")
+    #[serde(default)]
+    branch: Option<String>,
 }
 
 fn default_workspace() -> String {
@@ -253,8 +260,21 @@ async fn create_session(
         }))
     })?;
 
+    // Resolve workspace: clone repo if specified, otherwise use workspace_root
+    let workspace = if let Some(ref repo) = req.repo {
+        let branch = req.branch.as_deref().unwrap_or("develop");
+        super::workspace::clone_repo(repo, branch).await.map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
+                code: "clone_failed".to_owned(),
+                message: format!("git clone failed: {e}"),
+            }))
+        })?.to_string_lossy().to_string()
+    } else {
+        req.workspace_root.clone()
+    };
+
     // Create ACP session
-    let acp_session_id = acp::session_new(&mut process, &req.workspace_root).await.map_err(|e| {
+    let acp_session_id = acp::session_new(&mut process, &workspace).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
             code: "session_new_failed".to_owned(),
             message: format!("ACP session/new failed: {e}"),
@@ -263,7 +283,7 @@ async fn create_session(
 
     // Inject git context if requested
     if req.git_context
-        && let Some(ctx) = super::git_context::extract(&req.workspace_root)
+        && let Some(ctx) = super::git_context::extract(&workspace)
     {
         let context_text = super::git_context::format_for_prompt(&ctx);
         let context_msg = vec![serde_json::json!({"type": "text", "text": format!("[Git Context]\n{context_text}")})];
@@ -275,10 +295,12 @@ async fn create_session(
     });
 
     let session_id = format!("{}_{}", agent_name, uuid::Uuid::new_v4());
+    let ws_path = if req.repo.is_some() { Some(workspace.clone()) } else { None };
     let entry = SessionEntry {
         agent_name: agent_name.clone(),
         acp_session_id,
         process,
+        workspace_path: ws_path,
     };
 
     state.sessions.insert(session_id.clone(), Arc::new(Mutex::new(entry)));
@@ -322,6 +344,9 @@ async fn close_session(
 
     let mut entry = entry_arc.lock().await;
     let _ = entry.process.child.kill().await;
+    if let Some(ref ws) = entry.workspace_path {
+        super::workspace::cleanup(ws).await;
+    }
     tracing::info!(session = %id, "session closed");
 
     Ok(StatusCode::NO_CONTENT)
@@ -458,6 +483,7 @@ async fn fork_session(
         agent_name: req.target_agent.clone(),
         acp_session_id,
         process,
+        workspace_path: None,
     };
 
     state.sessions.insert(fork_id.clone(), Arc::new(Mutex::new(entry)));
