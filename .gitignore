@@ -50,3 +50,7 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Rust
+target/
+Cargo.lock
