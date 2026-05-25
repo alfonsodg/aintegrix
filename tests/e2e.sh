@@ -125,6 +125,27 @@ R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
   "$BASE/mcp" -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}')
 check "POST /mcp initialize → result" "result" "$R"
 
+R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
+  "$BASE/mcp" -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}')
+check "POST /mcp tools/list → acp_prompt" "acp_prompt" "$R"
+
+# MCP full flow: create → prompt → close
+echo "[11] MCP full flow (create → prompt → close)"
+R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
+  "$BASE/mcp" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"acp_create_session","arguments":{"agent":"opencode"}}}')
+check "MCP create_session → Session created" "Session created" "$R"
+MCP_SESSION=$(echo "$R" | python3 -c "import json,sys; t=json.load(sys.stdin)['result']['content'][0]['text']; print(t.split('Session created: ')[1].split(' ')[0])" 2>/dev/null)
+
+if [ -n "$MCP_SESSION" ]; then
+  R=$(curl -s --max-time 60 -X POST -H "$TOKEN" -H "Content-Type: application/json" \
+    "$BASE/mcp" -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"acp_prompt\",\"arguments\":{\"session_id\":\"${MCP_SESSION}\",\"message\":\"say hello\"}}}")
+  check "MCP prompt → Agent responded" "Agent responded" "$R"
+
+  R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
+    "$BASE/mcp" -d "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"acp_close_session\",\"arguments\":{\"session_id\":\"${MCP_SESSION}\"}}}")
+  check "MCP close_session → closed" "closed" "$R"
+fi
+
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
