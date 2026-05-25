@@ -31,11 +31,12 @@ pub struct InitializeResult {
 /// Perform the ACP initialize handshake with an agent
 pub async fn initialize(agent: &mut AgentProcess) -> Result<InitializeResult, AppError> {
     let params = json!({
+        "protocolVersion": 1,
         "clientInfo": {
             "name": "aintegrix",
             "version": env!("CARGO_PKG_VERSION")
         },
-        "capabilities": {
+        "clientCapabilities": {
             "fs": { "readTextFile": true, "writeTextFile": true },
             "terminal": true
         }
@@ -67,7 +68,8 @@ pub async fn session_new(
     agent: &mut AgentProcess,
     workspace_root: &str,
 ) -> Result<String, AppError> {
-    let params = json!({ "workspace_root": workspace_root });
+    let cwd = if workspace_root.is_empty() { "/tmp" } else { workspace_root };
+    let params = json!({ "cwd": cwd, "mcpServers": [] });
     let resp = agent.request("session/new", Some(params), DEFAULT_TIMEOUT).await?;
 
     if let Some(err) = resp.error {
@@ -76,10 +78,11 @@ pub async fn session_new(
 
     let result = resp.result.unwrap_or_default();
     result
-        .get("session_id")
+        .get("sessionId")
+        .or_else(|| result.get("session_id"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_owned())
-        .ok_or_else(|| AppError::Protocol("session/new: missing session_id".to_owned()))
+        .ok_or_else(|| AppError::Protocol("session/new: missing sessionId".to_owned()))
 }
 
 /// Send a prompt to an existing session and return the stop reason
@@ -90,8 +93,8 @@ pub async fn session_prompt(
     timeout: Duration,
 ) -> Result<String, AppError> {
     let params = json!({
-        "session_id": session_id,
-        "messages": messages
+        "sessionId": session_id,
+        "prompt": messages
     });
 
     let resp = agent.request("session/prompt", Some(params), timeout).await?;
@@ -101,11 +104,14 @@ pub async fn session_prompt(
     }
 
     let result = resp.result.unwrap_or_default();
-    result
+    let stop_reason = result
         .get("stop_reason")
+        .or_else(|| result.get("stopReason"))
         .and_then(|v| v.as_str())
-        .map(|s| s.to_owned())
-        .ok_or_else(|| AppError::Protocol("session/prompt: missing stop_reason".to_owned()))
+        .unwrap_or("end_turn")
+        .to_owned();
+
+    Ok(stop_reason)
 }
 
 /// Send session/cancel notification
