@@ -85,7 +85,8 @@ pub async fn session_new(
         .ok_or_else(|| AppError::Protocol("session/new: missing sessionId".to_owned()))
 }
 
-/// Send a prompt to an existing session and return the stop reason
+/// Send a prompt to an existing session and return the stop reason.
+/// Handles agent tool call requests (fs/read, terminal) during execution.
 pub async fn session_prompt(
     agent: &mut AgentProcess,
     session_id: &str,
@@ -97,21 +98,118 @@ pub async fn session_prompt(
         "prompt": messages
     });
 
-    let resp = agent.request("session/prompt", Some(params), timeout).await?;
+    // Send the prompt request
+    let request_id = crate::protocol::transport::send_request(
+        &mut agent.stdin,
+        "session/prompt",
+        Some(params),
+    )
+    .await?;
 
-    if let Some(err) = resp.error {
-        return Err(AppError::Protocol(format!("session/prompt failed: {}", err.message)));
+    // Process notifications and tool call requests until we get our response
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        tokio::select! {
+            Some(resp) = agent.response_rx.recv() => {
+                // Check if this is our response
+                if resp.id == crate::protocol::types::RequestId::Number(request_id) {
+                    if let Some(err) = resp.error {
+                        return Err(AppError::Protocol(format!("session/prompt failed: {}", err.message)));
+                    }
+                    let result = resp.result.unwrap_or_default();
+                    let stop_reason = result
+                        .get("stop_reason")
+                        .or_else(|| result.get("stopReason"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("end_turn")
+                        .to_owned();
+                    return Ok(stop_reason);
+                }
+            }
+            Some(notif) = agent.notification_rx.recv() => {
+                // Handle tool call requests from agent
+                if notif.method.starts_with("__request:") {
+                    let tool_method = &notif.method["__request:".len()..];
+                    let params = notif.params.clone().unwrap_or_default();
+                    tracing::info!(tool = %tool_method, "handling tool call from agent");
+
+                    // Extract request ID from params (agent sends it)
+                    let req_id = params.get("__request_id")
+                        .cloned()
+                        .unwrap_or(Value::Null);
+
+                    let result = handle_tool_call(tool_method, &params).await;
+
+                    // Send response back to agent
+                    let response_json = json!({
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": result
+                    });
+                    let _ = crate::protocol::transport::send_raw(&mut agent.stdin, &response_json).await;
+                    tracing::info!(tool = %tool_method, "tool call response sent");
+                } else {
+                    tracing::debug!(method = %notif.method, "notification received");
+                }
+            }
+            _ = tokio::time::sleep_until(deadline) => {
+                return Err(AppError::Protocol("session/prompt timed out".to_owned()));
+            }
+        }
     }
+}
 
-    let result = resp.result.unwrap_or_default();
-    let stop_reason = result
-        .get("stop_reason")
-        .or_else(|| result.get("stopReason"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("end_turn")
-        .to_owned();
-
-    Ok(stop_reason)
+/// Execute a tool call from the agent
+async fn handle_tool_call(method: &str, params: &Value) -> Value {
+    match method {
+        "session/request_permission" | "requestPermission" => {
+            // Auto-approve all tool permissions
+            json!({"approved": true})
+        }
+        "fs/readTextFile" | "readTextFile" => {
+            let path = params.get("path")
+                .or_else(|| params.get("filePath"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            match tokio::fs::read_to_string(path).await {
+                Ok(content) => json!({"content": content}),
+                Err(e) => json!({"error": format!("failed to read {}: {}", path, e)}),
+            }
+        }
+        "fs/writeTextFile" | "writeTextFile" => {
+            let path = params.get("path")
+                .or_else(|| params.get("filePath"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let content = params.get("content")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            match tokio::fs::write(path, content).await {
+                Ok(()) => json!({"success": true}),
+                Err(e) => json!({"error": format!("failed to write {}: {}", path, e)}),
+            }
+        }
+        "terminal/execute" | "execute" => {
+            let command = params.get("command")
+                .and_then(|v| v.as_str())
+                .unwrap_or("echo no command");
+            let output = tokio::process::Command::new("bash")
+                .arg("-c")
+                .arg(command)
+                .output()
+                .await;
+            match output {
+                Ok(o) => json!({
+                    "stdout": String::from_utf8_lossy(&o.stdout).to_string(),
+                    "stderr": String::from_utf8_lossy(&o.stderr).to_string(),
+                    "exitCode": o.status.code().unwrap_or(-1)
+                }),
+                Err(e) => json!({"error": format!("exec failed: {}", e)}),
+            }
+        }
+        _ => json!({"error": format!("unsupported tool: {}", method)}),
+    }
 }
 
 /// Send session/cancel notification

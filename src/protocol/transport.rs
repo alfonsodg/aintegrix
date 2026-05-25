@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdin, ChildStdout};
 use tokio::sync::mpsc;
@@ -50,6 +50,19 @@ pub async fn send_notification(
     Ok(())
 }
 
+/// Send a raw JSON value to the agent's stdin
+pub async fn send_raw(
+    stdin: &mut ChildStdin,
+    value: &Value,
+) -> Result<(), AppError> {
+    let mut line = serde_json::to_string(value)
+        .map_err(|e| AppError::Protocol(format!("serialize error: {e}")))?;
+    line.push('\n');
+    stdin.write_all(line.as_bytes()).await?;
+    stdin.flush().await?;
+    Ok(())
+}
+
 /// Reads messages from stdout and dispatches them to the appropriate channel.
 /// Responses go to `response_tx`, notifications go to `notification_tx`.
 pub async fn read_loop(
@@ -74,11 +87,15 @@ pub async fn read_loop(
             }
             Ok(Message::Request(req)) => {
                 // Agent-to-client requests (fs/read_text_file, etc.)
-                // For now, treat as notification with the method
+                // Include the request ID so we can respond
+                let mut params = req.params.unwrap_or(json!({}));
+                if let Some(obj) = params.as_object_mut() {
+                    obj.insert("__request_id".to_owned(), serde_json::to_value(&req.id).unwrap_or_default());
+                }
                 let _ = notification_tx.send(Notification {
                     jsonrpc: "2.0".to_owned(),
                     method: format!("__request:{}", req.method),
-                    params: req.params,
+                    params: Some(params),
                 });
             }
             Err(e) => {
