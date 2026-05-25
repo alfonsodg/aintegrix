@@ -1,0 +1,17 @@
+[Unit]
+Description=AIntegriX - Centralized ACP Server
+After=network.target
+
+[Service]
+Type=simple
+User=alfonsodg
+Group=alfonsodg
+WorkingDirectory=/opt/aintegrix
+ExecStart=/opt/aintegrix/aintegrix --config /opt/aintegrix/aintegrix.yaml
+Restart=on-failure
+RestartSec=5
+Environment=AINTEGRIX_API_KEY=${AINTEGRIX_API_KEY}
+EnvironmentFile=-/opt/aintegrix/.env
+
+[Install]
+WantedBy=multi-user.target
