@@ -108,7 +108,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                 },
                 {
                     "name": "acp_create_session",
-                    "description": "Create a new session on a specific ACP agent. Use 'workspace_root' for local paths or 'repo' to clone from GitLab (remote server only). If the directory exists locally, prefer workspace_root.",
+                    "description": "Create a new session on a specific ACP agent. Pass workspace_root with a local path or a GitLab repo path (e.g. 'ccvass/project'). Auto-detects: if path exists locally it's used directly, otherwise it's cloned from GitLab.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
@@ -190,30 +190,26 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             let Some(cfg) = state.config.agents.get(agent) else {
                 return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: agent '{}' not found. Available: {:?}", agent, state.config.agents.keys().collect::<Vec<_>>())}], "isError": true}));
             };
-            let workspace = arguments.get("workspace_root").and_then(|v| v.as_str()).unwrap_or("/tmp");
+            let workspace = arguments.get("workspace_root")
+                .or_else(|| arguments.get("repo"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("/tmp");
+            let branch = arguments.get("branch").and_then(|v| v.as_str()).unwrap_or("develop");
 
-            // Auto-clone repo if specified
-            let (resolved_workspace, ws_path) = if let Some(repo) = arguments.get("repo").and_then(|v| v.as_str()) {
-                let branch = arguments.get("branch").and_then(|v| v.as_str()).unwrap_or("develop");
-                match super::workspace::clone_repo(repo, branch).await {
+            // Auto-detect: if path exists locally → use it. If not → try clone as repo.
+            let (resolved_workspace, ws_path) = if std::path::Path::new(workspace).exists() {
+                (workspace.to_owned(), None)
+            } else if workspace.contains('/') && !workspace.starts_with('/') {
+                // Looks like a repo path (e.g. "ccvass/voxcix/admin")
+                match super::workspace::clone_repo(workspace, branch).await {
                     Ok(path) => {
                         let p = path.to_string_lossy().to_string();
                         (p.clone(), Some(p))
                     }
-                    Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error cloning repo: {e}")}], "isError": true})),
+                    Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: '{}' not found locally and clone failed: {}", workspace, e)}], "isError": true})),
                 }
             } else {
-                // Validate workspace exists on server
-                if workspace != "/tmp" && !std::path::Path::new(workspace).exists() {
-                    // Detect if it looks like a repo path
-                    let hint = if workspace.contains('/') && !workspace.starts_with('/') {
-                        format!(" It looks like a repo path — use the 'repo' parameter: {{\"agent\": \"{}\", \"repo\": \"{}\", \"branch\": \"develop\"}}", agent, workspace)
-                    } else {
-                        format!(" Use 'repo' parameter instead: {{\"agent\": \"{}\", \"repo\": \"group/project\", \"branch\": \"develop\"}}", agent)
-                    };
-                    return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: workspace_root '{}' does not exist on the remote server. This tool runs REMOTELY.{}", workspace, hint)}], "isError": true}));
-                }
-                (workspace.to_owned(), None)
+                return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: '{}' does not exist.", workspace)}], "isError": true}));
             };
             let mut process = match crate::agent::process::AgentProcess::spawn(agent, cfg).await {
                 Ok(p) => p,
