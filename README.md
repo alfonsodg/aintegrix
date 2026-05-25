@@ -84,6 +84,16 @@ Any MCP-compatible agent can use AIntegriX as a tool server:
 
 Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp_close_session`
 
+### Auto-clone repos
+
+Create a session with a fresh clone of any GitLab repo:
+
+```json
+{"name": "acp_create_session", "arguments": {"agent": "opencode", "repo": "ccvass/voxcix/admin", "branch": "develop"}}
+```
+
+The agent works on the latest code from the specified branch. Workspace is cleaned on session close.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |

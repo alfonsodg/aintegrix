@@ -49,6 +49,16 @@ Create a new session.
 {"agent": "kiro", "workspace_root": "/tmp/project", "model": "claude-opus-4.6"}
 ```
 
+**With auto-clone** (clones repo fresh into temp workspace):
+```json
+{"agent": "opencode", "repo": "ccvass/voxcix/admin", "branch": "develop"}
+```
+
+**With auto-routing**:
+```json
+{"auto_route": true, "prompt": "fix the React component", "repo": "ccvass/voxcix/admin", "branch": "develop"}
+```
+
 **Response** (201):
 ```json
 {"id": "uuid", "agent": "kiro", "status": "active"}

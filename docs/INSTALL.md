@@ -65,6 +65,25 @@ Agents must be installed on the same server:
 
 Each agent must be authenticated independently (`kiro-cli login`, `copilot login`, etc.).
 
+## SSH Access for Repo Cloning
+
+AIntegriX can auto-clone repos when creating sessions. Configure SSH:
+
+```bash
+# Ensure the server has SSH access to GitLab
+cat ~/.ssh/config
+# Should have:
+# Host scovil.labtau.com
+#     HostName 35.192.105.88
+#     User git
+#     IdentityFile ~/.ssh/id_rsa
+#     IdentitiesOnly yes
+
+# Test access
+ssh -T git@scovil.labtau.com
+# → Welcome to GitLab, @supergod!
+```
+
 ## CLI Tool
 
 ```bash

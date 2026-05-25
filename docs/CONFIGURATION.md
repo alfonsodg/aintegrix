@@ -65,3 +65,30 @@ Each agent has a `default_model` and a list of available `models`. Clients can o
 ```
 
 Query available models: `GET /api/v1/agents/{name}/models`
+
+## Auto-Clone Workspaces
+
+When `repo` is provided in session creation, AIntegriX clones the repository into a temporary workspace:
+
+```json
+{"agent": "opencode", "repo": "ccvass/voxcix/admin", "branch": "develop"}
+```
+
+- Shallow clone (`--depth 1`) for speed
+- Branch defaults to `develop` if not specified
+- Workspace path: `/tmp/aintegrix-ws/{uuid}/`
+- Cleaned automatically on session close
+- Requires SSH key access from the server to GitLab (`~/.ssh/config` → `id_rsa`)
+
+## SSH Configuration (Server)
+
+The server needs SSH access to GitLab for repo cloning:
+
+```
+# ~/.ssh/config on dev-gcp
+Host scovil.labtau.com
+    HostName 35.192.105.88
+    User git
+    IdentityFile ~/.ssh/id_rsa
+    IdentitiesOnly yes
+```
