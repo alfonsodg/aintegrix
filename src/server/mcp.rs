@@ -205,7 +205,13 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             } else {
                 // Validate workspace exists on server
                 if workspace != "/tmp" && !std::path::Path::new(workspace).exists() {
-                    return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: workspace_root '{}' does not exist on the remote server. This tool runs REMOTELY — use 'repo' parameter to clone a GitLab repository instead. Example: {{\"agent\": \"{}\", \"repo\": \"group/project\", \"branch\": \"develop\"}}", workspace, agent)}], "isError": true}));
+                    // Detect if it looks like a repo path
+                    let hint = if workspace.contains('/') && !workspace.starts_with('/') {
+                        format!(" It looks like a repo path — use the 'repo' parameter: {{\"agent\": \"{}\", \"repo\": \"{}\", \"branch\": \"develop\"}}", agent, workspace)
+                    } else {
+                        format!(" Use 'repo' parameter instead: {{\"agent\": \"{}\", \"repo\": \"group/project\", \"branch\": \"develop\"}}", agent)
+                    };
+                    return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: workspace_root '{}' does not exist on the remote server. This tool runs REMOTELY.{}", workspace, hint)}], "isError": true}));
                 }
                 (workspace.to_owned(), None)
             };
