@@ -1,43 +1,57 @@
 # Development Standards
 
-## Language & Version
+## Language
 
-- **Language**: [Python/TypeScript/Go/Rust/Java] (latest stable)
-- **Package Manager**: [uv/npm/go mod/cargo/maven]
+- Rust (latest stable via rust-toolchain.toml)
+- Edition: 2024
+
+## Tooling
+
+- Build: `cargo build`
+- Lint: `cargo clippy -- -D warnings`
+- Format: `cargo fmt`
+- Test: `cargo test`
+- Audit: `cargo audit`
 
 ## Code Style
 
-- Linter: [ruff/eslint/golangci-lint/clippy/checkstyle]
-- Formatter: [ruff format/prettier/gofmt/rustfmt]
-- Line length: 120
-- Indentation: spaces (4 for Python/Java, 2 for TS/Go/Rust)
+- Max file size: 300 lines
+- `#[allow(dead_code)]` only for scaffold modules pending integration
+- All public functions documented
+- Error handling via `thiserror` (AppError enum)
+- Async by default for I/O operations
 
-## Architecture
+## Dependencies
 
-- Pattern: [Clean Architecture / Hexagonal / MVC]
-- API style: [REST / GraphQL / gRPC]
-- Database: [PostgreSQL / Redis / MongoDB]
+- axum 0.8 (HTTP + WebSocket)
+- tokio 1 (async runtime)
+- sqlx 0.8 (SQLite, compile-time checked)
+- serde + serde_yaml (config)
+- serde_json (JSON-RPC)
+- dashmap 6 (concurrent cache)
+- tracing (structured logging)
+- clap 4 (CLI)
+- uuid 1 (session IDs)
+- chrono 0.4 (timestamps)
+- reqwest 0.12 (webhooks)
+- hmac + sha2 (webhook signatures)
 
 ## Testing
 
-- Framework: [pytest/vitest/go test/cargo test]
-- Coverage target: 80%
-- Test location: `tests/`
+- Unit tests: inline `#[cfg(test)]` modules
+- Integration tests: `tests/` directory with mock ACP agent
+- Mock agent: `src/bin/mock_agent.rs`
+- CI: clippy + test + audit
 
-## Git Workflow
+## Git
 
-- Branches: `feature/*` → `develop` → `main`
-- Commits: `type(scope): description (#issue)`
-- MR required for `main` (from `develop` only)
+- Branch from `develop`
+- Conventional commits: `type(scope): subject (#issue)`
+- Merge to develop directly (no MR for features)
+- MR only for develop → main
 
-## Deployment
+## Config
 
-- Container: Docker (multi-stage)
-- Registry: registry.labtau.com
-- CI/CD: GitLab CI (auto-detected)
-
-## Documentation
-
-- `README.md` — project overview
-- `docs/STANDARDS.md` — this file
-- `CHANGELOG.md` — auto-generated from commits
+- YAML format (`aintegrix.yaml`)
+- Env var interpolation: `${VAR_NAME}`
+- No hardcoded values

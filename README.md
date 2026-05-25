@@ -1,44 +1,103 @@
-# Project Name
+# AIntegriX
 
-Brief description of what this project does and why it exists.
+Centralized ACP (Agent Client Protocol) server for multi-agent coordination. Manages, routes, and orchestrates multiple AI coding agents through a single HTTP/MCP interface.
 
 ## Objectives
 
-- Primary goal
-- Secondary goal
+- Provide a single entry point to coordinate 5+ ACP-compatible coding agents
+- Expose both REST API and native MCP server for universal integration
+- Enable any MCP-compatible agent to delegate work to other agents
+- Zero-UI, config-as-code, fast, lightweight
 
 ## Features
 
-- Feature 1
-- Feature 2
+- JSON-RPC 2.0 ACP protocol over stdio (agent subprocess management)
+- REST API with Bearer token authentication
+- Native MCP server at `/mcp` (SSE transport)
+- WebSocket + SSE streaming for real-time session updates
+- Declarative permission policy engine (YAML)
+- Agent pool with health monitoring and auto-restart
+- Per-agent model selection (configurable defaults + dynamic override)
+- Capability-based routing rules
+- Per-tenant rate limiting (token bucket)
+- Webhook notifications with HMAC signatures
+- SQLite persistence (sessions, turns, agent state)
+- Prometheus metrics at `/metrics`
+- Graceful shutdown (SIGTERM/SIGINT)
+- CLI companion tool (`aintegrix-cli`)
+
+## Agents Supported
+
+| Agent | Command | Version | Default Model |
+|-------|---------|---------|---------------|
+| Kiro CLI | `kiro-cli acp` | 2.3.0 | claude-opus-4.6 |
+| GitHub Copilot | `copilot --acp` | 1.0.48 | gpt-5.3-codex |
+| OpenCode | `opencode acp` | 1.15.3 | xiaomi-mimo/mimo-v2.5-pro |
+| Claude Code | `claude-agent-acp` | 0.37.0 | minimax-2.7 |
+| Codex CLI | `codex-acp` | adapter | gpt-5.5-xhigh |
 
 ## Tech Stack
 
-- Language: (latest stable)
-- Framework: (latest stable)
-- Database: (latest stable)
-- Infrastructure: Docker, Nginx, CI/CD
+- Language: Rust (latest stable)
+- Async runtime: tokio
+- HTTP framework: axum
+- Database: SQLite (sqlx, WAL mode)
+- Config: YAML (serde_yaml)
+- Protocol: JSON-RPC 2.0 over stdio
 
 ## Quick Start
 
 ```bash
-# Clone
-git clone git@scovil.labtau.com:<org>/<project>.git
-cd <project>
+# Build
+cargo build --release
 
-# Setup
-cp samples/.env.example .env
-# Edit .env with your values
+# Run with config
+./target/release/aintegrix --config samples/aintegrix.yaml
 
-# Run (development)
-docker compose -f deploy/compose/docker-compose.dev.yml up
+# Or use the CLI
+aintegrix-cli --url https://coord-acp.apulab.info status
 ```
+
+## MCP Integration
+
+Any MCP-compatible agent can use AIntegriX as a tool server:
+
+```json
+{
+  "mcpServers": {
+    "aintegrix": {
+      "url": "https://coord-acp.apulab.info/mcp",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
+Available MCP tools: `acp_list_agents`, `acp_create_session`, `acp_prompt`, `acp_close_session`
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Liveness (no auth) |
+| GET | `/api/v1/agents` | List agents |
+| GET | `/api/v1/agents/{name}/models` | List models for agent |
+| POST | `/api/v1/sessions` | Create session |
+| POST | `/api/v1/sessions/{id}/prompt` | Send prompt |
+| GET | `/api/v1/sessions/{id}/stream` | WebSocket streaming |
+| DELETE | `/api/v1/sessions/{id}` | Close session |
+| POST | `/mcp` | MCP JSON-RPC endpoint |
 
 ## Documentation
 
 - [Development Standards](docs/STANDARDS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Installation](docs/INSTALL.md)
 
 ## Deployment
 
@@ -46,4 +105,4 @@ See `REMOTE.md` (not tracked — contains credentials).
 
 ## License
 
-Proprietary — All rights reserved.
+MIT

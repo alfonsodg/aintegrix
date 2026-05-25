@@ -1,52 +1,78 @@
-# Installation Guide
+# Installation
 
-## Prerequisites
-
-- (Language runtime and version)
-- (Package manager)
-- Docker (for local services)
-
-## Clone
+## From Source
 
 ```bash
-git clone git@scovil.labtau.com:<group>/<project>.git
-cd <project>
+# Requirements: Rust toolchain (latest stable)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Clone and build
+git clone git@scovil.labtau.com:ccvass/model-shared/aintegrix.git
+cd aintegrix
+cargo build --release
+
+# Binary at: target/release/aintegrix
 ```
 
-## Environment Setup
+## Deploy (systemd)
 
 ```bash
-cp samples/.env.example .env
-# Edit .env with your local values
+# Copy binary
+sudo mkdir -p /opt/aintegrix
+sudo cp target/release/aintegrix /opt/aintegrix/
+
+# Copy config
+sudo cp samples/aintegrix.yaml /opt/aintegrix/aintegrix.yaml
+# Edit with your agent paths and API keys
+
+# Create .env
+echo "AINTEGRIX_API_KEY=your-secret-key" > /opt/aintegrix/.env
+
+# Install service
+sudo cp configs/aintegrix.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now aintegrix
+
+# Verify
+curl http://localhost:8050/health
 ```
 
-## Install Dependencies
+## Nginx + SSL
 
 ```bash
-# (language-specific install command)
+# Copy nginx config
+sudo cp configs/nginx/coord-acp.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/coord-acp.conf /etc/nginx/sites-enabled/
+
+# Get SSL certificate
+sudo certbot --nginx -d coord-acp.apulab.info
+
+# Reload
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-## Database Setup
+## Agent Prerequisites
+
+Agents must be installed on the same server:
+
+| Agent | Install |
+|-------|---------|
+| Kiro CLI | `curl -fsSL https://cli.kiro.dev/install \| bash` |
+| Copilot | `npm install -g @anthropic-ai/copilot-cli` |
+| OpenCode | `npm install -g opencode-ai` |
+| Claude adapter | `npm install -g @agentclientprotocol/claude-agent-acp` |
+| Codex adapter | `npm install -g @agentclientprotocol/codex-acp` |
+
+Each agent must be authenticated independently (`kiro-cli login`, `copilot login`, etc.).
+
+## CLI Tool
 
 ```bash
-# (migration command if applicable)
+# Build CLI
+cargo build --release --bin aintegrix-cli
+
+# Use
+aintegrix-cli --url https://coord-acp.apulab.info --token <key> status
+aintegrix-cli agents
+aintegrix-cli prompt kiro "fix the bug"
 ```
-
-## Run Locally
-
-```bash
-# (start command)
-```
-
-## Verify
-
-```bash
-curl http://localhost:<port>/health
-```
-
-## Common Issues
-
-| Problem | Solution |
-|---------|----------|
-| Port in use | Change port in .env |
-| DB connection refused | Ensure Docker services are running |

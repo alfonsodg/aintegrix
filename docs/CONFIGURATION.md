@@ -1,47 +1,67 @@
-# Configuration Guide
+# Configuration
 
-## Environment Variables
+AIntegriX is configured via a single YAML file. Default path: `/etc/aintegrix/aintegrix.yaml`
 
-All configuration is via environment variables. See `samples/.env.example` for defaults.
+## Full Schema
 
-### Required
+```yaml
+server:
+  host: "127.0.0.1"        # Bind address
+  port: 8050                # Listen port
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | Database connection string | `postgresql://user:pass@host:5432/db` |
-| `SECRET_KEY` | Application secret | (generate random) |
+logging:
+  level: info               # debug, info, warn, error
+  format: json              # json or text
 
-### Optional
+agents:
+  <name>:
+    command: /path/to/binary  # Agent binary path
+    args: [acp]               # Arguments
+    mode: native              # native or adapter
+    max_sessions: 3           # Max concurrent sessions
+    auto_restart: true        # Restart on crash
+    default_model: model-name # Default model
+    models:                   # Available models
+      - model-a
+      - model-b
+    env:                      # Extra env vars for agent
+      API_KEY: ${ENV_VAR}
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `8000` |
-| `LOG_LEVEL` | Logging verbosity | `INFO` |
-| `WORKERS` | Number of workers | `4` |
+permissions:
+  default_policy: deny        # deny or approve
+  auto_approve:
+    - fs/read_text_file
+  require_approval:
+    - fs/write_text_file
+    - terminal/create
+  always_deny:
+    - terminal/kill
+```
 
-## Configuration Files
+## Environment Variable Interpolation
 
-| File | Purpose |
-|------|---------|
-| `.env` | Local environment (gitignored) |
-| `samples/.env.example` | Template with all variables |
+Use `${VAR_NAME}` in any string value. Resolved at load time from process environment.
 
-## Per-Environment Settings
+```yaml
+env:
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+```
 
-### Development
+## Authentication
 
-- Debug mode enabled
-- Hot reload active
-- Local database
+Set `AINTEGRIX_API_KEY` environment variable. All `/api/*` and `/mcp` endpoints require `Authorization: Bearer <token>`. Health endpoints (`/health`, `/readiness`, `/metrics`) are public.
 
-### Staging
+## Agent Modes
 
-- Debug disabled
-- Connected to staging services
-- Deployed via CI/CD
+- **native**: Binary speaks ACP directly on stdio (kiro-cli, copilot, opencode)
+- **adapter**: Wrapper binary that translates to ACP (claude-agent-acp, codex-acp)
 
-### Production
+## Model Selection
 
-- Debug disabled
-- All secrets from CI/CD variables (masked + protected)
-- Health check required before traffic
+Each agent has a `default_model` and a list of available `models`. Clients can override the model when creating a session:
+
+```json
+{"agent": "kiro", "model": "claude-opus-4.6"}
+```
+
+Query available models: `GET /api/v1/agents/{name}/models`

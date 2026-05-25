@@ -1,63 +1,130 @@
-# API Documentation
+# API Reference
 
-## Base URL
+Base URL: `https://coord-acp.apulab.info`
 
-- Development: `http://localhost:<port>`
-- Staging: `https://api-dev.<domain>`
-- Production: `https://api.<domain>`
+All `/api/*` and `/mcp` endpoints require: `Authorization: Bearer <token>`
 
-## Authentication
+## Health
 
-All endpoints require `Authorization: Bearer <token>` unless noted.
+### GET /health
+Liveness check. No auth required.
 
-## Endpoints
+**Response**: `200 OK` (empty body)
 
-### Health
+### GET /readiness
+Readiness check. Returns 503 if no agents configured.
 
-```
-GET /health
-```
+## Agents
 
-Response: `200 OK`
+### GET /api/v1/agents
+List all registered agents.
 
+**Response**:
 ```json
-{"status": "healthy", "version": "1.0.0"}
+[
+  {"name": "kiro", "command": "kiro-cli", "mode": "native", "max_sessions": 3},
+  {"name": "claude", "command": "claude-agent-acp", "mode": "adapter", "max_sessions": 3}
+]
 ```
 
-### Example Resource
+### GET /api/v1/agents/{name}/models
+List available models for an agent.
 
-```
-GET /api/v1/resource
-```
-
-Query parameters:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| page | int | No | Page number (default: 1) |
-| limit | int | No | Items per page (default: 20) |
-
-Response: `200 OK`
-
+**Response**:
 ```json
 {
-  "data": [],
-  "meta": {"page": 1, "limit": 20, "total": 0}
+  "agent": "kiro",
+  "default_model": "claude-opus-4.6",
+  "models": ["claude-opus-4.6", "claude-sonnet-4", "claude-haiku-3.5"]
 }
 ```
 
-## Error Responses
+## Sessions
 
-| Code | Description |
-|------|-------------|
-| 400 | Bad Request — invalid parameters |
-| 401 | Unauthorized — missing or invalid token |
-| 403 | Forbidden — insufficient permissions |
-| 404 | Not Found — resource does not exist |
-| 500 | Internal Server Error |
+### POST /api/v1/sessions
+Create a new session.
 
-Error body:
-
+**Request**:
 ```json
-{"error": "description", "code": "ERROR_CODE"}
+{"agent": "kiro", "workspace_root": "/tmp/project", "model": "claude-opus-4.6"}
 ```
+
+**Response** (201):
+```json
+{"id": "uuid", "agent": "kiro", "status": "active"}
+```
+
+### POST /api/v1/sessions/{id}/prompt
+Send a prompt to a session.
+
+**Request**:
+```json
+{"messages": [{"role": "user", "content": [{"type": "text", "text": "fix the bug"}]}]}
+```
+
+**Response**:
+```json
+{"stop_reason": "end_turn"}
+```
+
+### GET /api/v1/sessions/{id}/stream
+WebSocket upgrade for real-time session updates.
+
+**Messages received**:
+```json
+{"type": "session_update", "data": {"type": "agent_message_chunk", "text": "..."}}
+{"type": "turn_complete", "data": {"stop_reason": "end_turn"}}
+```
+
+### DELETE /api/v1/sessions/{id}
+Close a session.
+
+## MCP
+
+### POST /mcp
+MCP JSON-RPC endpoint (Streamable HTTP transport).
+
+**Initialize**:
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+```
+
+**List tools**:
+```json
+{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+```
+
+**Call tool**:
+```json
+{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "acp_list_agents", "arguments": {}}}
+```
+
+### MCP Tools
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `acp_list_agents` | List available agents | — |
+| `acp_create_session` | Create session | `agent`, optional: `model`, `workspace_root` |
+| `acp_prompt` | Send prompt | `session_id`, `message` |
+| `acp_close_session` | Close session | `session_id` |
+
+## Metrics
+
+### GET /metrics
+Prometheus text format. No auth required.
+
+```
+aintegrix_http_requests_total 42
+aintegrix_sessions_created_total 5
+aintegrix_prompts_total 12
+aintegrix_agent_restarts_total 0
+```
+
+## Errors
+
+All errors follow:
+```json
+{"error": {"code": "agent_not_found", "message": "agent 'xyz' not configured"}}
+```
+
+HTTP status codes: 401 (unauthorized), 404 (not found), 429 (rate limited), 500 (internal).
