@@ -169,7 +169,7 @@ async fn test_usage_empty() {
 async fn test_webhook_ignored_event() {
     let server = test_server();
     let resp = server
-        .post("/api/v1/webhooks/gitlab")
+        .post("/api/v1/webhooks/git")
         .json(&serde_json::json!({"object_kind": "push"}))
         .await;
     resp.assert_status(StatusCode::OK);

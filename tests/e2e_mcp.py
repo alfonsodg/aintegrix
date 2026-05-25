@@ -6,8 +6,8 @@ import requests
 import sys
 import time
 
-BASE = "https://coord-acp.apulab.info/mcp"
-TOKEN = "Bearer aintegrix-dev-key-2026"
+BASE = "http://localhost:8050/mcp"
+TOKEN = "Bearer test-key"
 HEADERS = {"Authorization": TOKEN, "Content-Type": "application/json"}
 
 PASS = 0

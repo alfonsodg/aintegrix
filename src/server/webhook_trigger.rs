@@ -10,9 +10,9 @@ use crate::agent::process::AgentProcess;
 use crate::agent::session as acp;
 use crate::server::routes::AppState;
 
-/// GitLab webhook payload (simplified)
+/// Git webhook payload (simplified)
 #[derive(Deserialize)]
-pub struct GitLabWebhook {
+pub struct GitWebhook {
     pub object_kind: String,
     #[serde(default)]
     pub object_attributes: Option<MrAttributes>,
@@ -41,15 +41,15 @@ pub struct ApiError {
     pub message: String,
 }
 
-/// Receive GitLab webhook and trigger agent action
-pub async fn gitlab_webhook(
+/// Receive Git webhook and trigger agent action
+pub async fn git_webhook(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Json(payload): Json<GitLabWebhook>,
+    Json(payload): Json<GitWebhook>,
 ) -> Result<Json<WebhookResponse>, (StatusCode, Json<ApiError>)> {
     // Validate webhook secret
     let secret = headers
-        .get("X-Gitlab-Token")
+        .get("X-Webhook-Token")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
@@ -72,7 +72,7 @@ pub async fn gitlab_webhook(
 
 async fn handle_mr_webhook(
     state: &AppState,
-    payload: &GitLabWebhook,
+    payload: &GitWebhook,
 ) -> Result<Json<WebhookResponse>, (StatusCode, Json<ApiError>)> {
     let attrs = payload.object_attributes.as_ref().ok_or_else(|| {
         (StatusCode::BAD_REQUEST, Json(ApiError {

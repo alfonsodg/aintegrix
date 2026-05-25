@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::error::AppError;
 
 const WORKSPACE_BASE: &str = "/tmp/aintegrix-ws";
-const GITLAB_HOST: &str = "git@scovil.labtau.com";
+const GIT_HOST: &str = "${GIT_HOST}";
 
 /// Clone a repo into a temporary workspace. Returns the path.
 pub async fn clone_repo(repo: &str, branch: &str) -> Result<PathBuf, AppError> {
@@ -17,7 +17,7 @@ pub async fn clone_repo(repo: &str, branch: &str) -> Result<PathBuf, AppError> {
     let url = if repo.contains('@') || repo.contains("://") {
         repo.to_owned()
     } else {
-        format!("{GITLAB_HOST}:{repo}.git")
+        format!("{GIT_HOST}:{repo}.git")
     };
 
     let output = tokio::process::Command::new("git")

@@ -7,7 +7,7 @@
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone git@scovil.labtau.com:ccvass/model-shared/aintegrix.git
+git clone <your-repo-url>
 cd aintegrix
 cargo build --release
 
@@ -28,9 +28,9 @@ cargo run -- --config samples/aintegrix-local.yaml
 
 ### Local vs Remote
 
-| | Local | Remote (dev-gcp) |
+| | Local | Remote (your-server) |
 |---|---|---|
-| URL | `http://localhost:8050` via mcp-proxy | `https://coord-acp.apulab.info/mcp` |
+| URL | `http://localhost:8050` via mcp-proxy | `https://your-server.example.com/mcp` |
 | MCP config | `command: mcp-proxy` (stdio) | `type: http` (direct) |
 | Code access | `workspace_root` with local paths | `workspace_root` with repo path (auto-clones) |
 | Needs push | No | Yes |
@@ -58,7 +58,7 @@ cargo run -- --config samples/aintegrix-local.yaml
 {
   "mcpServers": {
     "aintegrix": {
-      "url": "https://coord-acp.apulab.info/mcp",
+      "url": "https://your-server.example.com/mcp",
       "type": "http",
       "headers": {
         "Authorization": "Bearer aintegrix-dev-key-2026"
@@ -103,7 +103,7 @@ sudo cp configs/nginx/coord-acp.conf /etc/nginx/sites-available/
 sudo ln -sf /etc/nginx/sites-available/coord-acp.conf /etc/nginx/sites-enabled/
 
 # Get SSL certificate
-sudo certbot --nginx -d coord-acp.apulab.info
+sudo certbot --nginx -d your-server.example.com
 
 # Reload
 sudo nginx -t && sudo systemctl reload nginx
@@ -128,18 +128,18 @@ Each agent must be authenticated independently (`kiro-cli login`, `copilot login
 AIntegriX can auto-clone repos when creating sessions. Configure SSH:
 
 ```bash
-# Ensure the server has SSH access to GitLab
+# Ensure the server has SSH access to your Git server
 cat ~/.ssh/config
 # Should have:
-# Host scovil.labtau.com
-#     HostName 35.192.105.88
+# Host git.example.com
+#     HostName YOUR_GIT_SERVER_IP
 #     User git
 #     IdentityFile ~/.ssh/id_rsa
 #     IdentitiesOnly yes
 
 # Test access
-ssh -T git@scovil.labtau.com
-# → Welcome to GitLab, @supergod!
+ssh -T git@git.example.com
+# → Welcome!
 ```
 
 ## CLI Tool
@@ -149,7 +149,7 @@ ssh -T git@scovil.labtau.com
 cargo build --release --bin aintegrix-cli
 
 # Use
-aintegrix-cli --url https://coord-acp.apulab.info --token <key> status
+aintegrix-cli --url https://your-server.example.com --token <key> status
 aintegrix-cli agents
 aintegrix-cli prompt kiro "fix the bug"
 ```

@@ -1,6 +1,6 @@
 # API Reference
 
-Base URL: `https://coord-acp.apulab.info`
+Base URL: `https://your-server.example.com`
 
 All `/api/*` and `/mcp` endpoints require: `Authorization: Bearer <token>`
 
@@ -51,12 +51,12 @@ Create a new session.
 
 **With auto-clone** (clones repo fresh into temp workspace):
 ```json
-{"agent": "opencode", "repo": "ccvass/voxcix/admin", "branch": "develop"}
+{"agent": "opencode", "repo": "myorg/myproject", "branch": "develop"}
 ```
 
 **With auto-routing**:
 ```json
-{"auto_route": true, "prompt": "fix the React component", "repo": "ccvass/voxcix/admin", "branch": "develop"}
+{"auto_route": true, "prompt": "fix the React component", "repo": "myorg/myproject", "branch": "develop"}
 ```
 
 > **Note**: When using `repo`, ensure code is pushed to the remote branch first. AIntegriX clones from the remote — unpushed local changes will not be visible to the agent.
@@ -177,8 +177,8 @@ Query usage data. Optional params: `?agent=kiro&since=2026-05-01`
 
 ## Webhooks
 
-### POST /api/v1/webhooks/gitlab
-Receive GitLab webhook events. Validates `X-Gitlab-Token` header against `AINTEGRIX_WEBHOOK_SECRET` env var. MR open/reopen triggers auto code review.
+### POST /api/v1/webhooks/git
+Receive Git webhook events. Validates `X-Webhook-Token` header against `AINTEGRIX_WEBHOOK_SECRET` env var. MR open/reopen triggers auto code review.
 
 ## Metrics
 

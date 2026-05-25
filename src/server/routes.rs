@@ -46,7 +46,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/pipelines", post(super::pipeline::run_pipeline))
         .route("/api/v1/sessions/{id}/stream", post(super::streaming::stream_prompt))
         .route("/api/v1/stream", post(super::streaming::create_and_stream))
-        .route("/api/v1/webhooks/gitlab", post(super::webhook_trigger::gitlab_webhook))
+        .route("/api/v1/webhooks/git", post(super::webhook_trigger::git_webhook))
         .route("/mcp", post(super::mcp::mcp_handler))
         .route("/mcp/sse", get(super::mcp::mcp_sse))
         .with_state(state)
@@ -142,7 +142,7 @@ struct CreateSessionRequest {
     /// If true, inject git repo context (branch, commits, diff) into session
     #[serde(default)]
     git_context: bool,
-    /// GitLab repo path — triggers auto-clone (e.g. "ccvass/voxis/admin")
+    /// Git repo path — triggers auto-clone (e.g. "myorg/myproject")
     #[serde(default)]
     repo: Option<String>,
     /// Branch to clone (defaults to "develop")

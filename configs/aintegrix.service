@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=alfonsodg
-Group=alfonsodg
+User=YOUR_USER
+Group=YOUR_USER
 WorkingDirectory=/opt/aintegrix
 ExecStart=/opt/aintegrix/aintegrix --config /opt/aintegrix/aintegrix.yaml
 Restart=on-failure

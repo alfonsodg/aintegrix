@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://coord-acp.apulab.info/health">
+  <a href="#">
     <img src="https://img.shields.io/badge/status-live-brightgreen" alt="Status"/>
   </a>
   <img src="https://img.shields.io/badge/agents-5-blue" alt="Agents"/>
@@ -45,7 +45,7 @@ Your Agent (Kiro, Claude, etc.)
 | Each agent has different strengths | **Smart routing** picks the best agent for each task |
 | Can't compare agent responses | **Orchestration** sends to N agents in parallel |
 | No way to chain agent work | **Pipelines** feed output from one agent to the next |
-| Agents can't read your latest code | **Auto-clone** from GitLab or direct local filesystem |
+| Agents can't read your latest code | **Auto-clone** from your Git remote or direct local filesystem |
 | Responses arrive all at once | **SSE streaming** shows chunks in real-time |
 | Manual code review requests | **Webhooks** auto-trigger review on MR open |
 
@@ -112,7 +112,7 @@ cargo build --release
 {
   "mcpServers": {
     "aintegrix": {
-      "url": "https://coord-acp.apulab.info/mcp",
+      "url": "https://your-server.example.com/mcp",
       "type": "http",
       "headers": {"Authorization": "Bearer <token>"}
     }
@@ -155,9 +155,9 @@ cargo build --release
 - **Context injection** — auto-load steering files
 
 ### Operations
-- **Auto-clone repos** — fresh checkout from GitLab (remote mode)
+- **Auto-clone repos** — fresh checkout from your Git remote (remote mode)
 - **Local filesystem** — direct access to your code (local mode)
-- **Webhook triggers** — GitLab MR → auto code review
+- **Webhook triggers** — MR/PR → auto code review
 - **Session fork** — try same conversation with different agent
 - **Cost tracking** — usage per agent/session/model
 - **Live status** — agent idle/busy with session counts
@@ -174,7 +174,7 @@ cargo build --release
 | POST | `/api/v1/orchestrate` | Multi-agent (parallel/race/jury) |
 | POST | `/api/v1/pipelines` | Sequential agent chaining |
 | POST | `/api/v1/stream` | Create + stream SSE |
-| POST | `/api/v1/webhooks/gitlab` | Receive webhook events |
+| POST | `/api/v1/webhooks/git` | Receive webhook events |
 | GET | `/api/v1/agents/status` | Live agent status |
 | GET | `/api/v1/usage` | Cost tracking |
 | POST | `/mcp` | MCP JSON-RPC endpoint |

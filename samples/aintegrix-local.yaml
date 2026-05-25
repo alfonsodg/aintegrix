@@ -8,7 +8,7 @@ logging:
 
 agents:
   kiro:
-    command: /home/alfonsodg/.local/bin/kiro-cli
+    command: /usr/local/bin/kiro-cli
     args: [acp]
     mode: native
     max_sessions: 3
@@ -44,7 +44,7 @@ agents:
       - groq/llama-3.3-70b
 
   claude:
-    command: /home/alfonsodg/.nvm/versions/node/v24.14.1/bin/claude-agent-acp
+    command: claude-agent-acp
     args: []
     mode: adapter
     max_sessions: 3
@@ -56,7 +56,7 @@ agents:
       - claude-sonnet-4
 
   codex:
-    command: /home/alfonsodg/.nvm/versions/node/v24.14.1/bin/codex-acp
+    command: codex-acp
     args: []
     mode: adapter
     max_sessions: 3

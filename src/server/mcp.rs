@@ -99,13 +99,13 @@ fn handle_tools_list(id: Value, config: &crate::config::types::AppConfig) -> Mcp
     let create_desc = if is_local {
         "Create a new session on a specific ACP agent. Pass workspace_root with the LOCAL directory path where the code lives (e.g. '/home/user/project'). Do NOT use repo paths — this is a local server with direct filesystem access."
     } else {
-        "Create a new session on a specific ACP agent. Pass workspace_root with a GitLab repo path (e.g. 'ccvass/project') to clone, or a server-side directory. Push changes before calling."
+        "Create a new session on a specific ACP agent. Pass workspace_root with a Git repo path (e.g. 'myorg/project') to clone, or a server-side directory. Push changes before calling."
     };
 
     let ws_desc = if is_local {
         "Absolute local directory path where the code lives (e.g. '/home/user/myproject')"
     } else {
-        "GitLab repo path (e.g. 'ccvass/voxcix/admin') or server-side directory path"
+        "Git repo path (e.g. 'myorg/myproject') or server-side directory path"
     };
     McpResponse::success(
         id,
@@ -201,7 +201,7 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             let (resolved_workspace, ws_path) = if std::path::Path::new(workspace).exists() {
                 (workspace.to_owned(), None)
             } else if workspace.contains('/') && !workspace.starts_with('/') {
-                // Looks like a repo path (e.g. "ccvass/voxcix/admin")
+                // Looks like a repo path (e.g. "myorg/myproject")
                 match super::workspace::clone_repo(workspace, branch).await {
                     Ok(path) => {
                         let p = path.to_string_lossy().to_string();

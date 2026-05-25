@@ -1,10 +1,10 @@
 #!/bin/bash
 # E2E smoke tests for AIntegriX API
-# Run against: coord-acp.apulab.info
+# Run against: localhost or your deployed server
 set -e
 
-BASE="https://coord-acp.apulab.info"
-TOKEN="Authorization: Bearer aintegrix-dev-key-2026"
+BASE="http://localhost:8050"
+TOKEN="Authorization: Bearer ${AINTEGRIX_API_KEY:-test-key}"
 PASS=0
 FAIL=0
 
@@ -111,11 +111,11 @@ check "GET /usage → array" "[" "$R"
 # 9. Webhook
 echo "[9] Webhook"
 R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
-  "$BASE/api/v1/webhooks/gitlab" -d '{"object_kind": "push"}')
+  "$BASE/api/v1/webhooks/git" -d '{"object_kind": "push"}')
 check "Webhook push → ignored" "ignored" "$R"
 
 R=$(curl -s -X POST -H "$TOKEN" -H "Content-Type: application/json" \
-  "$BASE/api/v1/webhooks/gitlab" \
+  "$BASE/api/v1/webhooks/git" \
   -d '{"object_kind": "merge_request", "object_attributes": {"action": "open", "title": "test", "source_branch": "feat", "target_branch": "dev"}}')
 check "Webhook MR → accepted" "accepted" "$R"
 

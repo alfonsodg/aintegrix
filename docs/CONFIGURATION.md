@@ -68,10 +68,10 @@ Query available models: `GET /api/v1/agents/{name}/models`
 
 ## Auto-Clone Workspaces
 
-When running **remotely** and `workspace_root` contains a repo path (e.g. `ccvass/voxcix/admin`), AIntegriX auto-detects and clones it:
+When running **remotely** and `workspace_root` contains a repo path (e.g. `myorg/myproject`), AIntegriX auto-detects and clones it:
 
 - If path exists on disk → use directly
-- If path looks like a repo (`group/project`) → clone from GitLab
+- If path looks like a repo (`group/project`) → clone from your Git remote
 
 **Local mode** (host = `127.0.0.1`): Only accepts local filesystem paths. No repo cloning. The MCP tool schema only exposes `workspace_root` without `branch` or `repo` params.
 
@@ -80,17 +80,17 @@ When running **remotely** and `workspace_root` contains a repo path (e.g. `ccvas
 | Mode | workspace_root example | Behavior |
 |------|----------------------|----------|
 | Local | `/home/user/project` | Direct filesystem access |
-| Remote | `ccvass/voxcix/admin` | Auto-clone from GitLab |
+| Remote | `myorg/myproject` | Auto-clone from your Git remote |
 | Remote | `/opt/aintegrix` | Direct if exists on server |
 
 ## SSH Configuration (Server — Remote only)
 
-The server needs SSH access to GitLab for repo cloning:
+The server needs SSH access to your Git server for repo cloning:
 
 ```
-# ~/.ssh/config on dev-gcp
-Host scovil.labtau.com
-    HostName 35.192.105.88
+# ~/.ssh/config on your-server
+Host git.example.com
+    HostName YOUR_GIT_SERVER_IP
     User git
     IdentityFile ~/.ssh/id_rsa
     IdentitiesOnly yes
