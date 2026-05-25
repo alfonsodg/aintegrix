@@ -108,7 +108,7 @@ fn handle_tools_list(id: Value) -> McpResponse {
                 },
                 {
                     "name": "acp_create_session",
-                    "description": "Create a new session on a specific ACP agent. IMPORTANT: When using 'repo', you MUST commit and push your changes first. The remote agent clones from the remote branch — unpushed local changes are invisible. If needed, push to a temporary branch before calling this tool.",
+                    "description": "Create a new session on a specific ACP agent. This runs on a REMOTE server — use 'repo' to specify which GitLab repository the agent should work on. The repo is cloned fresh. You MUST push your changes before calling this tool.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
@@ -116,21 +116,21 @@ fn handle_tools_list(id: Value) -> McpResponse {
                                 "type": "string",
                                 "description": "Agent name (kiro, copilot, opencode, claude, codex)"
                             },
-                            "workspace_root": {
+                            "repo": {
                                 "type": "string",
-                                "description": "Workspace directory path"
+                                "description": "GitLab repo path (e.g. 'ccvass/voxcix/admin'). REQUIRED for code tasks. Clones fresh from remote."
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch to clone (defaults to 'develop')"
                             },
                             "model": {
                                 "type": "string",
                                 "description": "Model to use (optional, uses agent default if not specified)"
                             },
-                            "repo": {
+                            "workspace_root": {
                                 "type": "string",
-                                "description": "GitLab repo path to auto-clone (e.g. 'ccvass/voxis/admin'). Clones fresh into temp workspace."
-                            },
-                            "branch": {
-                                "type": "string",
-                                "description": "Branch to clone (defaults to 'develop')"
+                                "description": "Server-side directory path. Only use if you know the path exists on the remote server. Prefer 'repo' instead."
                             }
                         },
                         "required": ["agent"]
