@@ -83,6 +83,24 @@ When running **remotely** and `workspace_root` contains a repo path (e.g. `myorg
 | Remote | `myorg/myproject` | Auto-clone from your Git remote |
 | Remote | `/opt/aintegrix` | Direct if exists on server |
 
+## ACP Capability Negotiation
+
+AIntegriX reads agent capabilities during `initialize` and uses them automatically:
+
+| Capability | Effect |
+|-----------|--------|
+| `loadSession` | Enables session/load for persistence |
+| `sessionCapabilities.fork` | Native fork with history |
+| `sessionCapabilities.resume` | Lightweight session resume |
+| `promptCapabilities.embeddedContext` | Accept inline files in prompts |
+| `mcpCapabilities.http` | Agent can connect to MCP servers |
+
+These are **opt-in by the agent** — AIntegriX never uses a feature the agent doesn't advertise. No configuration needed.
+
+**Local mode**: `embeddedContext` and `mcpServers` params are hidden from the MCP tool schema (agents use direct filesystem access instead).
+
+**Remote mode**: All params visible in schema for agents that need them.
+
 ## SSH Configuration (Server — Remote only)
 
 The server needs SSH access to your Git server for repo cloning:

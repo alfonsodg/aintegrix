@@ -185,6 +185,37 @@ Receive Git webhook events. Validates `X-Webhook-Token` header against `AINTEGRI
 ### GET /metrics
 Prometheus text format. No auth required.
 
+## ACP Capabilities (capability-gated)
+
+These features activate automatically when the agent advertises support. No configuration needed.
+
+### POST /api/v1/sessions/{id}/model
+Change model mid-session. Only works if agent supports `session/set_model`.
+
+**Request**: `{"model": "claude-sonnet-4"}`
+
+### Embedded Context in Prompts
+Send files inline instead of requiring filesystem access. Only used if agent advertises `promptCapabilities.embeddedContext`.
+
+```json
+POST /api/v1/sessions/{id}/prompt
+{
+  "messages": [{"type": "text", "text": "review this"}],
+  "embedded_context": [{"type": "file", "path": "src/main.rs", "content": "fn main() {}"}]
+}
+```
+
+### MCP Servers on Session Create
+Pass MCP servers to the agent at session creation. Agent connects to them for the session lifetime.
+
+Configured per-agent in YAML or passed via API.
+
+### Native Session Fork
+When forking to the same agent that supports `sessionCapabilities.fork`, the fork preserves full conversation history. Cross-agent forks create new empty sessions.
+
+### Session Load/Resume
+If agent supports `loadSession` or `sessionCapabilities.resume`, sessions can be persisted and resumed across AIntegriX restarts.
+
 ```
 aintegrix_http_requests_total 42
 aintegrix_sessions_created_total 5
