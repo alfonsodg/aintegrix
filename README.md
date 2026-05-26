@@ -174,6 +174,7 @@ cargo build --release
 - **Prompt rewriting** — per-agent prefix/suffix
 - **Git-aware sessions** — inject branch, commits, diff as context
 - **Context injection** — auto-load steering files
+- **ACP capability negotiation** — auto-detect and use agent features (set_model, embeddedContext, fork, resume, mcpServers)
 
 ### Operations
 - **Auto-clone repos** — fresh checkout from your Git remote (remote mode)
@@ -192,6 +193,7 @@ cargo build --release
 | POST | `/api/v1/sessions` | Create session |
 | POST | `/api/v1/sessions/{id}/prompt` | Send prompt |
 | POST | `/api/v1/sessions/{id}/fork` | Fork to another agent |
+| POST | `/api/v1/sessions/{id}/model` | Change model mid-session |
 | POST | `/api/v1/orchestrate` | Multi-agent (parallel/race/jury) |
 | POST | `/api/v1/pipelines` | Sequential agent chaining |
 | POST | `/api/v1/stream` | Create + stream SSE |
