@@ -19,6 +19,7 @@ pub struct SessionEntry {
     pub acp_session_id: String,
     pub process: AgentProcess,
     pub workspace_path: Option<String>,
+    pub capabilities: crate::agent::session::AgentCapabilities,
 }
 
 /// Shared application state
@@ -42,6 +43,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/sessions/{id}", delete(close_session))
         .route("/api/v1/sessions/{id}/prompt", post(send_prompt))
         .route("/api/v1/sessions/{id}/fork", post(super::handlers::fork_session))
+        .route("/api/v1/sessions/{id}/model", post(super::handlers::set_model))
         .route("/api/v1/orchestrate", post(super::orchestrate::orchestrate))
         .route("/api/v1/pipelines", post(super::pipeline::run_pipeline))
         .route("/api/v1/sessions/{id}/stream", post(super::streaming::stream_prompt))
@@ -165,6 +167,8 @@ struct CreateSessionResponse {
 #[derive(Deserialize)]
 struct PromptRequest {
     messages: Vec<serde_json::Value>,
+    #[serde(default)]
+    embedded_context: Vec<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -253,12 +257,13 @@ async fn create_session(
     })?;
 
     // ACP initialize handshake
-    acp::initialize(&mut process).await.map_err(|e| {
+    let init_result = acp::initialize(&mut process).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
             code: "initialize_failed".to_owned(),
             message: format!("ACP initialize failed: {e}"),
         }))
     })?;
+    let capabilities = init_result.capabilities;
 
     // Resolve workspace: clone repo if specified, otherwise use workspace_root
     let workspace = if let Some(ref repo) = req.repo {
@@ -274,7 +279,7 @@ async fn create_session(
     };
 
     // Create ACP session
-    let acp_session_id = acp::session_new(&mut process, &workspace).await.map_err(|e| {
+    let acp_session_id = acp::session_new(&mut process, &workspace, None).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
             code: "session_new_failed".to_owned(),
             message: format!("ACP session/new failed: {e}"),
@@ -301,6 +306,7 @@ async fn create_session(
         acp_session_id,
         process,
         workspace_path: ws_path,
+        capabilities,
     };
 
     state.sessions.insert(session_id.clone(), Arc::new(Mutex::new(entry)));
@@ -366,11 +372,18 @@ async fn send_prompt(
     let agent_name = entry.agent_name.clone();
 
     // Apply prompt rewriting (prefix/suffix)
-    let messages = if let Some(cfg) = state.config.agents.get(&agent_name) {
+    let mut messages = if let Some(cfg) = state.config.agents.get(&agent_name) {
         super::handlers::rewrite_messages(req.messages, cfg.prompt_prefix.as_deref(), cfg.prompt_suffix.as_deref())
     } else {
         req.messages
     };
+
+    // Include embedded context if agent supports it
+    if !req.embedded_context.is_empty() && entry.capabilities.prompt_capabilities.embedded_context {
+        for ctx in &req.embedded_context {
+            messages.push(ctx.clone());
+        }
+    }
 
     let stop_reason = acp::session_prompt(
         &mut entry.process,

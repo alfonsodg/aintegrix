@@ -10,15 +10,51 @@ use crate::error::AppError;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Capabilities returned by the agent during initialize
+/// Capabilities advertised by the agent during initialize
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentCapabilities {
     #[serde(default)]
     pub load_session: bool,
     #[serde(default)]
-    pub auth: bool,
+    pub prompt_capabilities: PromptCapabilities,
     #[serde(default)]
-    pub modes: Vec<String>,
+    pub session_capabilities: SessionCapabilities,
+    #[serde(default)]
+    pub mcp_capabilities: McpCapabilities,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptCapabilities {
+    #[serde(default)]
+    pub image: bool,
+    #[serde(default)]
+    pub embedded_context: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionCapabilities {
+    #[serde(default)]
+    pub fork: Option<serde_json::Value>,
+    #[serde(default)]
+    pub resume: Option<serde_json::Value>,
+    #[serde(default)]
+    pub close: Option<serde_json::Value>,
+    #[serde(default)]
+    pub delete: Option<serde_json::Value>,
+    #[serde(default)]
+    pub list: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpCapabilities {
+    #[serde(default)]
+    pub http: bool,
+    #[serde(default)]
+    pub sse: bool,
 }
 
 /// Result of a successful initialize handshake
@@ -56,7 +92,8 @@ pub async fn initialize(agent: &mut AgentProcess) -> Result<InitializeResult, Ap
         .to_owned();
 
     let capabilities = result
-        .get("capabilities")
+        .get("agentCapabilities")
+        .or_else(|| result.get("capabilities"))
         .map(|v| serde_json::from_value(v.clone()).unwrap_or_default())
         .unwrap_or_default();
 
@@ -67,9 +104,11 @@ pub async fn initialize(agent: &mut AgentProcess) -> Result<InitializeResult, Ap
 pub async fn session_new(
     agent: &mut AgentProcess,
     workspace_root: &str,
+    mcp_servers: Option<&[Value]>,
 ) -> Result<String, AppError> {
     let cwd = if workspace_root.is_empty() { "/tmp" } else { workspace_root };
-    let params = json!({ "cwd": cwd, "mcpServers": [] });
+    let servers = mcp_servers.unwrap_or(&[]);
+    let params = json!({ "cwd": cwd, "mcpServers": servers });
     let resp = agent.request("session/new", Some(params), DEFAULT_TIMEOUT).await?;
 
     if let Some(err) = resp.error {
@@ -233,4 +272,61 @@ pub async fn session_cancel(
     session_id: &str,
 ) -> Result<(), AppError> {
     agent.notify("session/cancel", Some(json!({ "session_id": session_id }))).await
+}
+
+/// Change model for a session (capability-gated: agent must support it)
+pub async fn session_set_model(
+    agent: &mut AgentProcess,
+    session_id: &str,
+    model: &str,
+) -> Result<(), AppError> {
+    let params = json!({"sessionId": session_id, "model": model});
+    let resp = agent.request("session/set_model", Some(params), DEFAULT_TIMEOUT).await?;
+    if let Some(err) = resp.error {
+        return Err(AppError::Protocol(format!("session/set_model failed: {}", err.message)));
+    }
+    Ok(())
+}
+
+/// Native fork a session (capability-gated: sessionCapabilities.fork)
+pub async fn session_fork(
+    agent: &mut AgentProcess,
+    session_id: &str,
+) -> Result<String, AppError> {
+    let params = json!({"sessionId": session_id});
+    let resp = agent.request("session/fork", Some(params), DEFAULT_TIMEOUT).await?;
+    if let Some(err) = resp.error {
+        return Err(AppError::Protocol(format!("session/fork failed: {}", err.message)));
+    }
+    let result = resp.result.unwrap_or_default();
+    result.get("sessionId").and_then(|v| v.as_str()).map(|s| s.to_owned())
+        .ok_or_else(|| AppError::Protocol("session/fork: missing sessionId".to_owned()))
+}
+
+/// Load a previous session (capability-gated: loadSession)
+pub async fn session_load(
+    agent: &mut AgentProcess,
+    session_id: &str,
+    cwd: &str,
+) -> Result<(), AppError> {
+    let params = json!({"sessionId": session_id, "cwd": cwd, "mcpServers": []});
+    let resp = agent.request("session/load", Some(params), Duration::from_secs(60)).await?;
+    if let Some(err) = resp.error {
+        return Err(AppError::Protocol(format!("session/load failed: {}", err.message)));
+    }
+    Ok(())
+}
+
+/// Resume a session without history replay (capability-gated: sessionCapabilities.resume)
+pub async fn session_resume(
+    agent: &mut AgentProcess,
+    session_id: &str,
+    cwd: &str,
+) -> Result<(), AppError> {
+    let params = json!({"sessionId": session_id, "cwd": cwd});
+    let resp = agent.request("session/resume", Some(params), DEFAULT_TIMEOUT).await?;
+    if let Some(err) = resp.error {
+        return Err(AppError::Protocol(format!("session/resume failed: {}", err.message)));
+    }
+    Ok(())
 }

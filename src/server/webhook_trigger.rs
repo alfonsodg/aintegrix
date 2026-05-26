@@ -134,7 +134,7 @@ async fn run_review(
 ) -> Result<String, crate::error::AppError> {
     let mut process = AgentProcess::spawn(name, config).await?;
     acp::initialize(&mut process).await?;
-    let session_id = acp::session_new(&mut process, "/tmp").await?;
+    let session_id = acp::session_new(&mut process, "/tmp", None).await?;
     let messages = vec![serde_json::json!({"type": "text", "text": prompt})];
     let result = acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120)).await?;
     let _ = process.child.kill().await;

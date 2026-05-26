@@ -138,7 +138,7 @@ async fn run_step(
 ) -> Result<String, crate::error::AppError> {
     let mut process = AgentProcess::spawn(name, config).await?;
     acp::initialize(&mut process).await?;
-    let session_id = acp::session_new(&mut process, workspace).await?;
+    let session_id = acp::session_new(&mut process, workspace, None).await?;
     let stop_reason = acp::session_prompt(
         &mut process,
         &session_id,

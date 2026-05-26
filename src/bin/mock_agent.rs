@@ -38,10 +38,11 @@ fn main() {
                 "id": id,
                 "result": {
                     "protocolVersion": "1.0",
-                    "capabilities": {
-                        "load_session": true,
-                        "auth": false,
-                        "modes": ["plan", "edit"]
+                    "agentCapabilities": {
+                        "loadSession": true,
+                        "promptCapabilities": {"image": true, "embeddedContext": true},
+                        "sessionCapabilities": {"fork": {}, "resume": {}, "close": {}},
+                        "mcpCapabilities": {"http": true, "sse": false}
                     },
                     "agentInfo": {
                         "name": "mock-agent",

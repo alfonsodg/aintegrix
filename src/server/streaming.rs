@@ -125,7 +125,7 @@ pub async fn create_and_stream(
         }
 
         // Create session
-        let session_id = match acp::session_new(&mut process, &workspace).await {
+        let session_id = match acp::session_new(&mut process, &workspace, None).await {
             Ok(s) => s,
             Err(e) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(format!("{{\"error\": \"session: {e}\"}}"))));

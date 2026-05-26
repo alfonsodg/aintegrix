@@ -39,7 +39,7 @@ async fn test_session_new() {
     let mut agent = AgentProcess::spawn("mock", &config).await.unwrap();
 
     session::initialize(&mut agent).await.unwrap();
-    let session_id = session::session_new(&mut agent, "/tmp/test").await.unwrap();
+    let session_id = session::session_new(&mut agent, "/tmp/test", None).await.unwrap();
     assert_eq!(session_id, "mock-session-001");
 
     agent.shutdown().await;
@@ -51,7 +51,7 @@ async fn test_session_prompt() {
     let mut agent = AgentProcess::spawn("mock", &config).await.unwrap();
 
     session::initialize(&mut agent).await.unwrap();
-    session::session_new(&mut agent, "/tmp/test").await.unwrap();
+    session::session_new(&mut agent, "/tmp/test", None).await.unwrap();
 
     let messages = vec![serde_json::json!({
         "role": "user",

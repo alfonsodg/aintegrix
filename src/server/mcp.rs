@@ -219,12 +219,12 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             if let Err(e) = crate::agent::session::initialize(&mut process).await {
                 return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error initializing: {e}")}], "isError": true}));
             }
-            let acp_session_id = match crate::agent::session::session_new(&mut process, &resolved_workspace).await {
+            let acp_session_id = match crate::agent::session::session_new(&mut process, &resolved_workspace, None).await {
                 Ok(s) => s,
                 Err(e) => return McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error creating session: {e}")}], "isError": true})),
             };
             let session_id = format!("{}_{}", agent, uuid::Uuid::new_v4());
-            let entry = super::routes::SessionEntry { agent_name: agent.to_owned(), acp_session_id, process, workspace_path: ws_path };
+            let entry = super::routes::SessionEntry { agent_name: agent.to_owned(), acp_session_id, process, workspace_path: ws_path, capabilities: Default::default() };
             state.sessions.insert(session_id.clone(), std::sync::Arc::new(tokio::sync::Mutex::new(entry)));
             let model = arguments.get("model").and_then(|v| v.as_str()).map(|s| s.to_owned()).or_else(|| cfg.default_model.clone()).unwrap_or_else(|| "default".to_owned());
             McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Session created: {} (agent: {}, model: {})", session_id, agent, model)}]}))

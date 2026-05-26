@@ -56,7 +56,7 @@ pub async fn fork_session(
         }))
     })?;
 
-    let acp_session_id = acp::session_new(&mut process, "/tmp").await.map_err(|e| {
+    let acp_session_id = acp::session_new(&mut process, "/tmp", None).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
             code: "session_new_failed".to_owned(),
             message: format!("ACP session/new failed: {e}"),
@@ -69,6 +69,7 @@ pub async fn fork_session(
         acp_session_id,
         process,
         workspace_path: None,
+        capabilities: Default::default(),
     };
 
     state.sessions.insert(fork_id.clone(), Arc::new(Mutex::new(entry)));
@@ -108,4 +109,41 @@ pub fn rewrite_messages(
         msg["text"] = serde_json::Value::String(new_text);
     }
     messages
+}
+
+// --- Set Model ---
+
+#[derive(Deserialize)]
+pub struct SetModelRequest {
+    model: String,
+}
+
+#[derive(Serialize)]
+pub struct SetModelResponse {
+    status: String,
+    model: String,
+}
+
+pub async fn set_model(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<SetModelRequest>,
+) -> Result<Json<SetModelResponse>, (StatusCode, Json<ApiError>)> {
+    let entry_arc = state.sessions.get(&id).ok_or_else(|| {
+        not_found("session_not_found", format!("session '{id}' not found"))
+    })?.value().clone();
+
+    let mut entry = entry_arc.lock().await;
+
+    let acp_sid = entry.acp_session_id.clone();
+    crate::agent::session::session_set_model(&mut entry.process, &acp_sid, &req.model)
+        .await
+        .map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiError {
+                code: "set_model_failed".to_owned(),
+                message: format!("{e}"),
+            }))
+        })?;
+
+    Ok(Json(SetModelResponse { status: "ok".to_owned(), model: req.model }))
 }

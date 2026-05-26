@@ -164,7 +164,7 @@ async fn run_single_agent(
     let result = async {
         let mut process = AgentProcess::spawn(name, config).await?;
         acp::initialize(&mut process).await?;
-        let session_id = acp::session_new(&mut process, workspace).await?;
+        let session_id = acp::session_new(&mut process, workspace, None).await?;
         let stop_reason =
             acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120))
                 .await?;
