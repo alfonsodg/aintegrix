@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>One API. Five AI agents. Infinite possibilities.</strong>
+  <strong>The open-source ACP orchestrator. One API. Five agents. Infinite possibilities.</strong>
 </p>
 
 <p align="center">
@@ -22,19 +22,37 @@
 
 ## What is AIntegriX?
 
-AIntegriX is a **centralized orchestrator** that lets any AI agent delegate work to other AI agents through a single MCP endpoint. Think of it as a **load balancer for AI coding agents**.
+AIntegriX is the first **open-source ACP orchestrator** — a server that coordinates multiple [Agent Client Protocol](https://agentclientprotocol.com) agents through a single API.
+
+### What is ACP?
+
+The **Agent Client Protocol** (ACP) is the open standard that connects code editors with AI coding agents — the same way LSP standardized language servers. Every major coding agent now speaks ACP: Kiro, GitHub Copilot, Claude Code, OpenCode, Codex CLI, and [30+ more](https://agentclientprotocol.com/agents).
+
+### The Problem
+
+Each ACP agent runs independently. You can't:
+- Ask one agent to delegate work to another
+- Send the same prompt to multiple agents and compare
+- Chain agents in a pipeline (generate → review → fix)
+- Auto-trigger agents on Git events
+
+### The Solution
+
+AIntegriX acts as an **ACP multiplexer**. It spawns agents as subprocesses, speaks JSON-RPC 2.0 over stdio with each one, and exposes them all through a single MCP/REST endpoint.
 
 ```
-Your Agent (Kiro, Claude, etc.)
+Your Agent (any MCP-compatible tool)
        │
-       ▼ MCP
+       ▼ MCP / REST
 ┌─────────────────────────────────┐
 │         AIntegriX               │
 │   Route • Orchestrate • Stream  │
+│         (ACP Client)            │
 └──┬──────┬──────┬──────┬──────┬──┘
-   │      │      │      │      │
+   │      │      │      │      │   JSON-RPC 2.0 / stdio
    ▼      ▼      ▼      ▼      ▼
  Kiro  Copilot OpenCode Claude Codex
+ (ACP)  (ACP)   (ACP)  (ACP)  (ACP)
 ```
 
 **One prompt. Any agent. Real results.**
