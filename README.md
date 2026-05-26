@@ -7,12 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="#">
+  <a href="https://github.com/alfonsodg/aintegrix">
     <img src="https://img.shields.io/badge/status-live-brightgreen" alt="Status"/>
   </a>
   <img src="https://img.shields.io/badge/agents-5-blue" alt="Agents"/>
   <img src="https://img.shields.io/badge/protocol-ACP-purple" alt="ACP"/>
   <img src="https://img.shields.io/badge/rust-stable-orange" alt="Rust"/>
+  <a href="https://github.com/alfonsodg/aintegrix/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License"/>
+  </a>
 </p>
 
 ---
@@ -88,7 +91,7 @@ Your Agent (Kiro, Claude, etc.)
 
 ```bash
 # Install
-git clone <your-repo-url>
+git clone git@github.com:alfonsodg/aintegrix.git
 cd aintegrix
 cargo build --release
 ./configs/install.sh ~/.local/share/aintegrix

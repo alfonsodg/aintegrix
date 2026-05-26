@@ -7,7 +7,7 @@
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone <your-repo-url>
+git clone git@github.com:alfonsodg/aintegrix.git
 cd aintegrix
 cargo build --release
 
