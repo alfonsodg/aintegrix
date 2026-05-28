@@ -192,8 +192,11 @@ async fn list_sessions(State(state): State<Arc<AppState>>) -> Json<Vec<SessionIn
         .iter()
         .map(|entry| {
             let id = entry.key().clone();
-            // We can't await inside iter, so just report basic info
-            SessionInfo { id, agent: "".to_owned(), status: "active".to_owned() }
+            let (agent, status) = match entry.value().try_lock() {
+                Ok(e) => (e.agent_name.clone(), "active".to_owned()),
+                Err(_) => ("".to_owned(), "busy".to_owned()),
+            };
+            SessionInfo { id, agent, status }
         })
         .collect();
     Json(sessions)
@@ -235,7 +238,7 @@ async fn create_session(
     let active_count = state
         .sessions
         .iter()
-        .filter(|e| e.key().starts_with(&agent_name))
+        .filter(|e| e.key().starts_with(&format!("{agent_name}_")))
         .count() as u32;
 
     if active_count >= config.max_sessions {

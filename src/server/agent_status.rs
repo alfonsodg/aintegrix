@@ -25,7 +25,7 @@ pub async fn get_agent_status(
             let active = state
                 .sessions
                 .iter()
-                .filter(|e| e.key().starts_with(name.as_str()))
+                .filter(|e| e.key().starts_with(&format!("{}_", name)))
                 .count() as u32;
 
             let status = if active > 0 { "busy" } else { "idle" };
