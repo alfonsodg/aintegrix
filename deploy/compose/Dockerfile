@@ -12,7 +12,7 @@ RUN cargo build --release --bin aintegrix
 FROM debian:bookworm-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates sqlite3 && \
+    apt-get install -y --no-install-recommends ca-certificates sqlite3 curl && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -r -s /bin/false aintegrix && \
     mkdir -p /var/lib/aintegrix /etc/aintegrix && \
@@ -27,7 +27,7 @@ VOLUME ["/var/lib/aintegrix", "/etc/aintegrix"]
 EXPOSE 8050
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/usr/local/bin/aintegrix", "--version"]
+    CMD ["curl", "-f", "http://localhost:8050/health"]
 
 ENTRYPOINT ["/usr/local/bin/aintegrix"]
 CMD ["--config", "/etc/aintegrix/aintegrix.yaml"]
