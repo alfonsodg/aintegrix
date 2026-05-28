@@ -67,8 +67,8 @@ pub async fn send_raw(
 /// Responses go to `response_tx`, notifications go to `notification_tx`.
 pub async fn read_loop(
     stdout: ChildStdout,
-    response_tx: mpsc::UnboundedSender<Response>,
-    notification_tx: mpsc::UnboundedSender<Notification>,
+    response_tx: mpsc::Sender<Response>,
+    notification_tx: mpsc::Sender<Notification>,
 ) {
     let reader = BufReader::new(stdout);
     let mut lines = reader.lines();
@@ -80,10 +80,10 @@ pub async fn read_loop(
 
         match serde_json::from_str::<Message>(&line) {
             Ok(Message::Response(resp)) => {
-                let _ = response_tx.send(resp);
+                let _ = response_tx.send(resp).await;
             }
             Ok(Message::Notification(notif)) => {
-                let _ = notification_tx.send(notif);
+                let _ = notification_tx.send(notif).await;
             }
             Ok(Message::Request(req)) => {
                 // Agent-to-client requests (fs/read_text_file, etc.)
@@ -96,7 +96,7 @@ pub async fn read_loop(
                     jsonrpc: "2.0".to_owned(),
                     method: format!("__request:{}", req.method),
                     params: Some(params),
-                });
+                }).await;
             }
             Err(e) => {
                 tracing::warn!(error = %e, raw = %line, "failed to parse message from agent");
@@ -107,7 +107,7 @@ pub async fn read_loop(
 
 /// Wait for a response with a specific request ID, with timeout.
 pub async fn wait_for_response(
-    rx: &mut mpsc::UnboundedReceiver<Response>,
+    rx: &mut mpsc::Receiver<Response>,
     expected_id: RequestId,
     timeout: Duration,
 ) -> Result<Response, AppError> {

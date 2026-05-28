@@ -17,8 +17,8 @@ pub struct AgentProcess {
     pub name: String,
     pub child: Child,
     pub stdin: ChildStdin,
-    pub response_rx: mpsc::UnboundedReceiver<Response>,
-    pub notification_rx: mpsc::UnboundedReceiver<Notification>,
+    pub response_rx: mpsc::Receiver<Response>,
+    pub notification_rx: mpsc::Receiver<Notification>,
 }
 
 impl AgentProcess {
@@ -64,8 +64,8 @@ impl AgentProcess {
         }
 
         // Spawn stdout read loop
-        let (response_tx, response_rx) = mpsc::unbounded_channel();
-        let (notification_tx, notification_rx) = mpsc::unbounded_channel();
+        let (response_tx, response_rx) = mpsc::channel(64);
+        let (notification_tx, notification_rx) = mpsc::channel(256);
         tokio::spawn(read_loop(stdout, response_tx, notification_tx));
 
         Ok(Self { name: name.to_owned(), child, stdin, response_rx, notification_rx })
