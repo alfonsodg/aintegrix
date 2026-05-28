@@ -10,8 +10,6 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub agents: HashMap<String, AgentConfig>,
     #[serde(default)]
-    pub permissions: PermissionsConfig,
-    #[serde(default)]
     pub logging: LoggingConfig,
     #[serde(default)]
     pub routing: RoutingConfig,
@@ -50,18 +48,6 @@ pub struct AgentConfig {
     pub context_inject: crate::server::context_inject::ContextInjectConfig,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct PermissionsConfig {
-    #[serde(default = "default_policy")]
-    pub default_policy: String,
-    #[serde(default)]
-    pub auto_approve: Vec<String>,
-    #[serde(default)]
-    pub require_approval: Vec<String>,
-    #[serde(default)]
-    pub always_deny: Vec<String>,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct LoggingConfig {
     #[serde(default = "default_log_level")]
@@ -90,9 +76,6 @@ fn default_mode() -> String {
 }
 fn default_max_sessions() -> u32 {
     3
-}
-fn default_policy() -> String {
-    "deny".to_owned()
 }
 fn default_log_level() -> String {
     "info".to_owned()

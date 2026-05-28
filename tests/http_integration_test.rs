@@ -31,7 +31,6 @@ fn test_state() -> Arc<AppState> {
         config: AppConfig {
             server: ServerConfig { host: "127.0.0.1".to_owned(), port: 0 },
             agents,
-            permissions: PermissionsConfig::default(),
             logging: LoggingConfig::default(),
             routing: aintegrix::server::routing::RoutingConfig::default(),
         },

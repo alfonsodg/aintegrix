@@ -283,7 +283,6 @@ mod tests {
                         context_inject: Default::default(),
                     },
                 )]),
-                permissions: PermissionsConfig::default(),
                 logging: LoggingConfig::default(),
                 routing: crate::server::routing::RoutingConfig::default(),
             },
