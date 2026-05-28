@@ -1,3 +1,4 @@
+use super::error::ApiError;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -6,7 +7,7 @@ use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::Json;
 use futures::stream::Stream;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::agent::process::AgentProcess;
@@ -16,12 +17,6 @@ use crate::server::routes::AppState;
 #[derive(Deserialize)]
 pub struct StreamPromptRequest {
     pub messages: Vec<serde_json::Value>,
-}
-
-#[derive(Serialize)]
-pub struct ApiError {
-    pub code: String,
-    pub message: String,
 }
 
 /// Send prompt and stream agent notifications as SSE events

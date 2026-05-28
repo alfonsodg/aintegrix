@@ -1,3 +1,4 @@
+use super::error::ApiError;
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
@@ -8,7 +9,8 @@ use tokio::sync::Mutex;
 
 use crate::agent::process::AgentProcess;
 use crate::agent::session as acp;
-use super::routes::{AppState, SessionEntry, ApiError, not_found};
+use super::error::not_found;
+use super::routes::{AppState, SessionEntry};
 
 // --- Fork ---
 

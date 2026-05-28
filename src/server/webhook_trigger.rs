@@ -1,3 +1,4 @@
+use super::error::ApiError;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -33,12 +34,6 @@ pub struct MrAttributes {
 pub struct WebhookResponse {
     pub status: String,
     pub action_taken: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct ApiError {
-    pub code: String,
-    pub message: String,
 }
 
 /// Receive Git webhook and trigger agent action

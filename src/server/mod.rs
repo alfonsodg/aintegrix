@@ -1,3 +1,4 @@
+pub mod error;
 pub mod agent_status;
 pub mod auth;
 pub mod context_inject;

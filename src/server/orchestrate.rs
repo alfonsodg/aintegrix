@@ -1,3 +1,4 @@
+use super::error::ApiError;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -43,12 +44,6 @@ pub struct AgentResult {
     stop_reason: Option<String>,
     error: Option<String>,
     duration_ms: u64,
-}
-
-#[derive(Serialize)]
-pub struct ApiError {
-    code: String,
-    message: String,
 }
 
 pub async fn orchestrate(

@@ -1,3 +1,4 @@
+use super::error::ApiError;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -44,12 +45,6 @@ pub struct StepResult {
     pub stop_reason: Option<String>,
     pub error: Option<String>,
     pub duration_ms: u64,
-}
-
-#[derive(Serialize)]
-pub struct ApiError {
-    pub code: String,
-    pub message: String,
 }
 
 pub async fn run_pipeline(

@@ -176,15 +176,7 @@ struct PromptResponse {
     stop_reason: String,
 }
 
-#[derive(Serialize)]
-pub struct ApiError {
-    pub code: String,
-    pub message: String,
-}
-
-pub fn not_found(code: &str, message: String) -> (StatusCode, Json<ApiError>) {
-    (StatusCode::NOT_FOUND, Json(ApiError { code: code.to_owned(), message }))
-}
+pub use super::error::{ApiError, not_found};
 
 async fn list_sessions(State(state): State<Arc<AppState>>) -> Json<Vec<SessionInfo>> {
     let sessions: Vec<SessionInfo> = state
