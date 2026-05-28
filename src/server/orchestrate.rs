@@ -166,7 +166,7 @@ async fn run_single_agent(
         acp::initialize(&mut process).await?;
         let session_id = acp::session_new(&mut process, workspace, None).await?;
         let stop_reason =
-            acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120))
+            acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120), workspace)
                 .await?;
         let _ = process.child.kill().await;
         Ok::<String, crate::error::AppError>(stop_reason)

@@ -144,6 +144,7 @@ async fn run_step(
         &session_id,
         messages.to_vec(),
         Duration::from_secs(120),
+        workspace,
     )
     .await?;
     let _ = process.child.kill().await;

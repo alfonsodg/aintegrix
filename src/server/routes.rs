@@ -292,7 +292,7 @@ async fn create_session(
     {
         let context_text = super::git_context::format_for_prompt(&ctx);
         let context_msg = vec![serde_json::json!({"type": "text", "text": format!("[Git Context]\n{context_text}")})];
-        let _ = acp::session_prompt(&mut process, &acp_session_id, context_msg, std::time::Duration::from_secs(30)).await;
+        let _ = acp::session_prompt(&mut process, &acp_session_id, context_msg, std::time::Duration::from_secs(30), &workspace).await;
     }
 
     let model = req.model.unwrap_or_else(|| {
@@ -385,11 +385,13 @@ async fn send_prompt(
         }
     }
 
+    let ws = entry.workspace_path.clone().unwrap_or_else(|| "/tmp".to_owned());
     let stop_reason = acp::session_prompt(
         &mut entry.process,
         &acp_sid,
         messages,
         Duration::from_secs(120),
+        &ws,
     )
     .await
     .map_err(|e| {

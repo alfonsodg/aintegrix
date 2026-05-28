@@ -59,7 +59,7 @@ async fn test_session_prompt() {
     })];
 
     let stop_reason =
-        session::session_prompt(&mut agent, "mock-session-001", messages, Duration::from_secs(5))
+        session::session_prompt(&mut agent, "mock-session-001", messages, Duration::from_secs(5), "/tmp")
             .await
             .unwrap();
 

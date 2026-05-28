@@ -131,6 +131,7 @@ pub async fn session_prompt(
     session_id: &str,
     messages: Vec<Value>,
     timeout: Duration,
+    workspace: &str,
 ) -> Result<String, AppError> {
     let params = json!({
         "sessionId": session_id,
@@ -182,7 +183,13 @@ pub async fn session_prompt(
                         .cloned()
                         .unwrap_or(Value::Null);
 
-                    let result = handle_tool_call(tool_method, &params).await;
+                    // Inject workspace for path-safe tool calls
+                    let mut tool_params = params.clone();
+                    if let Some(obj) = tool_params.as_object_mut() {
+                        obj.insert("__workspace".to_owned(), Value::String(workspace.to_owned()));
+                    }
+
+                    let result = handle_tool_call(tool_method, &tool_params).await;
 
                     let response_json = json!({
                         "jsonrpc": "2.0",
@@ -214,7 +221,6 @@ pub async fn session_prompt(
 async fn handle_tool_call(method: &str, params: &Value) -> Value {
     match method {
         "session/request_permission" => {
-            // Auto-approve: select the first "allow" option
             let options = params.get("options").and_then(|v| v.as_array());
             let option_id = options
                 .and_then(|opts| {
@@ -230,24 +236,29 @@ async fn handle_tool_call(method: &str, params: &Value) -> Value {
         }
         "fs/read_text_file" => {
             let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            match tokio::fs::read_to_string(path).await {
+            let workspace = params.get("__workspace").and_then(|v| v.as_str()).unwrap_or("/tmp");
+            match crate::server::fs_handler::read_text_file(workspace, path).await {
                 Ok(content) => json!({"content": content}),
-                Err(e) => json!({"content": format!("Error reading {}: {}", path, e)}),
+                Err(e) => json!({"content": format!("Error: {e}")}),
             }
         }
         "fs/write_text_file" => {
             let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let content = params.get("content").and_then(|v| v.as_str()).unwrap_or("");
-            match tokio::fs::write(path, content).await {
+            let workspace = params.get("__workspace").and_then(|v| v.as_str()).unwrap_or("/tmp");
+            match crate::server::fs_handler::write_text_file(workspace, path, content).await {
                 Ok(()) => json!({}),
-                Err(e) => json!({"error": format!("failed to write {}: {}", path, e)}),
+                Err(e) => json!({"error": format!("{e}")}),
             }
         }
         "terminal/execute" => {
             let command = params.get("command").and_then(|v| v.as_str()).unwrap_or("echo no command");
+            let workspace = params.get("__workspace").and_then(|v| v.as_str()).unwrap_or("/tmp");
+            tracing::info!(command = %command, workspace = %workspace, "terminal/execute");
             let output = tokio::process::Command::new("bash")
                 .arg("-c")
                 .arg(command)
+                .current_dir(workspace)
                 .output()
                 .await;
             match output {
@@ -256,7 +267,7 @@ async fn handle_tool_call(method: &str, params: &Value) -> Value {
                     "stderr": String::from_utf8_lossy(&o.stderr).to_string(),
                     "exitCode": o.status.code().unwrap_or(-1)
                 }),
-                Err(e) => json!({"error": format!("exec failed: {}", e)}),
+                Err(e) => json!({"error": format!("exec failed: {e}")}),
             }
         }
         _ => {

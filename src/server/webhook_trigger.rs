@@ -54,7 +54,7 @@ pub async fn git_webhook(
         .unwrap_or("");
 
     let expected = std::env::var("AINTEGRIX_WEBHOOK_SECRET").unwrap_or_default();
-    if !expected.is_empty() && secret != expected {
+    if !expected.is_empty() && (secret.len() != expected.len() || !bool::from(subtle::ConstantTimeEq::ct_eq(secret.as_bytes(), expected.as_bytes()))) {
         return Err((StatusCode::UNAUTHORIZED, Json(ApiError {
             code: "invalid_webhook_secret".to_owned(),
             message: "invalid webhook token".to_owned(),
@@ -136,7 +136,7 @@ async fn run_review(
     acp::initialize(&mut process).await?;
     let session_id = acp::session_new(&mut process, "/tmp", None).await?;
     let messages = vec![serde_json::json!({"type": "text", "text": prompt})];
-    let result = acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120)).await?;
+    let result = acp::session_prompt(&mut process, &session_id, messages, Duration::from_secs(120), "/tmp").await?;
     let _ = process.child.kill().await;
     Ok(result)
 }

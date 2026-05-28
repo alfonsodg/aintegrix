@@ -30,6 +30,7 @@ dependencies = [
  "sha2",
  "shellexpand",
  "sqlx",
+ "subtle",
  "tempfile",
  "thiserror",
  "tokio",

@@ -238,7 +238,7 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: &AppState) -
             let mut entry = entry_arc.lock().await;
             let acp_sid = entry.acp_session_id.clone();
             let messages = vec![json!({"type": "text", "text": message})];
-            match crate::agent::session::session_prompt(&mut entry.process, &acp_sid, messages, std::time::Duration::from_secs(120)).await {
+            match crate::agent::session::session_prompt(&mut entry.process, &acp_sid, messages, std::time::Duration::from_secs(120), "/tmp").await {
                 Ok(response_text) => McpResponse::success(id, json!({"content": [{"type": "text", "text": response_text}]})),
                 Err(e) => McpResponse::success(id, json!({"content": [{"type": "text", "text": format!("Error: {e}")}], "isError": true})),
             }
