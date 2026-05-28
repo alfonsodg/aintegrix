@@ -30,9 +30,12 @@ impl AgentProcess {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Inject environment variables
+        // Inject environment variables (skip dangerous overrides)
+        const DENY_ENV: &[&str] = &["LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES"];
         for (key, value) in &config.env {
-            cmd.env(key, value);
+            if !DENY_ENV.contains(&key.as_str()) {
+                cmd.env(key, value);
+            }
         }
 
         let mut child = cmd.spawn().map_err(|e| {
