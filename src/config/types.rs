@@ -21,6 +21,12 @@ pub struct ServerConfig {
     pub host: String,
     #[serde(default = "default_port")]
     pub port: u16,
+    #[serde(default = "default_prompt_timeout")]
+    pub prompt_timeout_secs: u64,
+    #[serde(default = "default_init_timeout")]
+    pub init_timeout_secs: u64,
+    #[serde(default = "default_shutdown_timeout")]
+    pub shutdown_timeout_secs: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -70,6 +76,15 @@ fn default_host() -> String {
 }
 fn default_port() -> u16 {
     8050
+}
+fn default_prompt_timeout() -> u64 {
+    120
+}
+fn default_init_timeout() -> u64 {
+    30
+}
+fn default_shutdown_timeout() -> u64 {
+    5
 }
 fn default_mode() -> String {
     "native".to_owned()

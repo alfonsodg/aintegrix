@@ -381,11 +381,12 @@ async fn send_prompt(
     }
 
     let ws = entry.workspace_path.clone().unwrap_or_else(|| "/tmp".to_owned());
+    let timeout = Duration::from_secs(state.config.server.prompt_timeout_secs);
     let stop_reason = acp::session_prompt(
         &mut entry.process,
         &acp_sid,
         messages,
-        Duration::from_secs(120),
+        timeout,
         &ws,
     )
     .await
